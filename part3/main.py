@@ -4,6 +4,7 @@
 import time
 import logging
 import signal
+import serial
 
 # flag indicating if any signal is received
 SHUTDOWN_FLAG = False
@@ -11,40 +12,46 @@ SHUTDOWN_FLAG = False
 # the delay time (ms) after each loop
 LOOP_DELAY = 50
 
+# the path of serial device
+SERIAL_DEVICE   = '/dev/ttyAMA0'
+SERIAL_BAUDRATE = 115200
+
 # state constants
 STATE_OPEN      = 0
 STATE_CLOSED    = 1
 STATE_INVADED   = 2
 STATE_EMERGENCY = 3
 
-# utility functions
-def is_door_open():
-    # TODO implementation
-    return True
-
-def is_authenticated():
-    # TODO implementation
-    return True
-
-def is_signaled_emergency():
-    # TODO implementation
-    return True
-
-def open_door():
-    # TODO implementation
-    pass
-
-def warn_invaded():
-    # TODO implementation
-    pass
-
-def warn_emergency():
-    # TODO implementation
-    pass
-
 def main():
+    serial_device = serial.Serial(port=SERIAL_DEVICE,
+                                  baudrate=SERIAL_BAUDRATE,
+                                  parity=serial.PARITY_NONE,
+                                  stopbits=serial.STOPBITS_ONE,
+                                  bytesize=serial.EIGHTBITS,
+                                  timeout=1)
+
     prev_door_state = is_door_open()
     state = STATE_OPEN if prev_door_state else STATE_CLOSED
+
+    # utility functions
+    def is_door_open():
+        # TODO implementation
+        return True
+
+    def is_authenticated():
+        # TODO implementation
+        return True
+
+    def is_signaled_emergency():
+        payload = serial_device.read(size=65536)
+        return len(payload) > 0
+
+    def open_door():
+        # TODO implementation
+        pass
+
+    def warn_invaded():
+        serial_device.write('I')
 
     # event handlers
     def on_auth():
@@ -64,7 +71,6 @@ def main():
 
     def on_emergency():
         state = STATE_EMERGENCY
-        warn_emergency()
 
     def on_door_close():
         assert state == STATE_OPEN
