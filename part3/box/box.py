@@ -6,7 +6,6 @@ import cv2
 
 import config
 import face
-import hardware
 
 
 if __name__ == '__main__':
