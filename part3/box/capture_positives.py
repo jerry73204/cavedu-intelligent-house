@@ -20,8 +20,7 @@ import shutil
 # Prefix for positive training image filenames.
 POSITIVE_FILE_PREFIX = 'positive_'
 
-if __name__ == '__main__':
-	camera = cv2.VideoCapture(0)
+def capture_positives(camera):
 	'''
 	# Create the directory for positive training images if it doesn't exist.
 	if not os.path.exists(config.POSITIVE_DIR):

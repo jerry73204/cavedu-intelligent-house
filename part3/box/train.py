@@ -53,8 +53,7 @@ def normalize(X, low, high, dtype=None):
 	if dtype is None:
 		return np.asarray(X)
 	return np.asarray(X, dtype=dtype)
-
-if __name__ == '__main__':
+def train():
 	print "Reading training images..."
 	faces = []
 	labels = []
