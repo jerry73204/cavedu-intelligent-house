@@ -20,15 +20,16 @@ if __name__ == '__main__':
 			train.train()
 			global_flag_training_finished = 1
 		elif global_flag_start_recognition == 1:
-			private_success = 0
 			face_count = 0
 			global_flag_start_recognition = 0
 			model = cv2.createEigenFaceRecognizer()
 			model.load(config.TRAINING_FILE)
 			start_time = time.time()
-			while face_count < 5 and time.time()-start_time < 5:
-				ret, image = camera.read()
-				image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+			while face_count < 5 and time.time()-start_time < 20:
+				ret, image0 = camera.read()
+				cv2.imshow('aaa',image0)
+				cv2.waitKey(1)
+				image = cv2.cvtColor(image0, cv2.COLOR_RGB2GRAY)
 				result = face.detect_single(image)
 				if result is None:
 						print 'Could not detect single face!  Check the image in capture.pgm' \
@@ -36,6 +37,11 @@ if __name__ == '__main__':
 						continue
 				face_count = face_count + 1
 				x, y, w, h = result
+				cv2.rectangle(image0,(x,y),(x+w,y+h),(0,255,0),2)
+				cv2.imshow('aaa',image0)
+				cv2.waitKey(1)
+				time.sleep(1)
+				start_time = start_time + 1
 				# Crop and resize image to face.
 				crop = face.resize(face.crop(image, x, y, w, h))
 				# Test face against model.
@@ -45,12 +51,10 @@ if __name__ == '__main__':
 					confidence)
 				if label == config.POSITIVE_LABEL and confidence < config.POSITIVE_THRESHOLD:
 					print 'Recognized face!'
-					private_success = 1
+					global_flag_recognition_success = 1
 					break
 				else:
 					print 'Did not recognize face!'
-			if private_success == 1:
-				global_flag_recognition_success = 1
 			global_flag_recognition_finished = 1
 		else:
 			cv2.waitKey(30)
