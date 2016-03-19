@@ -4,7 +4,9 @@
 import time
 import logging
 import signal
+from threading import Thread
 import serial
+import auth
 
 # flag indicating if any signal is received
 SHUTDOWN_FLAG = False
@@ -13,7 +15,8 @@ SHUTDOWN_FLAG = False
 LOOP_DELAY = 0.05
 
 # the path of serial device
-SERIAL_DEVICE_PATH   = '/dev/ttyAMA0'
+# SERIAL_DEVICE_PATH   = '/dev/ttyAMA0'
+SERIAL_DEVICE_PATH   = '/dev/pts/4'
 SERIAL_BAUDRATE = 115200
 
 # state constants
@@ -88,6 +91,10 @@ def main():
     global prev_door_state
     global state
 
+    # start authenticator thread
+    auth_thread = Thread(target=auth.auth_worker)
+    auth_thread.start()
+
     # initialize
     prev_door_state = is_door_open()
     state = STATE_OPEN if prev_door_state else STATE_CLOSED
@@ -96,6 +103,8 @@ def main():
     while True:
         if SHUTDOWN_FLAG:
             logging.info('Shutting down...')
+            auth.FLAG_SHUTDOWN = True
+            auth_thread.join()
             exit()
 
         elif is_signaled_emergency():
