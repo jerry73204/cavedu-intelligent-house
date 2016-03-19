@@ -1,23 +1,19 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
-
 import time
 import logging
 import signal
 from threading import Thread
 import serial
+import cv2
 import auth
+import config
 
 # flag indicating if any signal is received
 SHUTDOWN_FLAG = False
 
 # the delay time (ms) after each loop
 LOOP_DELAY = 0.05
-
-# the path of serial device
-# SERIAL_DEVICE_PATH   = '/dev/ttyAMA0'
-SERIAL_DEVICE_PATH   = '/dev/pts/4'
-SERIAL_BAUDRATE = 115200
 
 # state constants
 STATE_OPEN      = 0
@@ -26,8 +22,8 @@ STATE_INVADED   = 2
 STATE_EMERGENCY = 3
 
 # mutable global variables
-serial_device = serial.Serial(port=SERIAL_DEVICE_PATH,
-                              baudrate=SERIAL_BAUDRATE,
+serial_device = serial.Serial(port=config.SERIAL_DEVICE_PATH,
+                              baudrate=config.SERIAL_BAUDRATE,
                               parity=serial.PARITY_NONE,
                               stopbits=serial.STOPBITS_ONE,
                               bytesize=serial.EIGHTBITS,
@@ -42,12 +38,25 @@ def is_door_open():
     return False
 
 def is_authenticated():
-    # TODO implementation
-    return False
+    if not auth.FLAG_BUSY:
+        if auth.FLAG_RECOGNITION_RESULT:
+            auth.FLAG_RECOGNITION_RESULT = False
+            return auth.LAST_RECOGNITION_TIME + 5 <= time.time()
+        else:
+            return False
 
 def is_signaled_emergency():
     payload = serial_device.read(size=65536)
     return len(payload) > 0
+
+def is_signaled_train_face():
+    # TODO implementation
+    return time.time() % 60 <= 1 # dummy impl.
+
+def is_signaled_recognize_face():
+    # TODO implementation
+    x = time.time() % 60
+    return x >= 50 and x <= 51  # dummy impl.
 
 def open_door():
     # TODO implementation
@@ -71,18 +80,18 @@ def on_auth():
         state = STATE_CLOSED
 
 def on_housebreaking():
-    logging.debug('housebreaking')
+    logging.debug('event housebreaking')
     global state
     state = STATE_INVADED
     warn_invaded()
 
 def on_emergency():
-    logging.debug('emergency')
+    logging.debug('event emergency')
     global state
     state = STATE_EMERGENCY
 
 def on_door_close():
-    logging.debug('door closed')
+    logging.debug('event door closed')
     global state
     assert state == STATE_OPEN
     state = STATE_CLOSED
@@ -109,6 +118,12 @@ def main():
 
         elif is_signaled_emergency():
             on_emergency()
+
+        elif is_signaled_train_face():
+            auth.FLAG_TRAIN_REQUEST = True
+
+        elif is_signaled_recognize_face():
+            auth.FLAG_RECOGNITION_REQUEST = True
 
         elif is_authenticated():
             on_auth()
