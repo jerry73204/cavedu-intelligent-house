@@ -10,10 +10,10 @@ import serial
 SHUTDOWN_FLAG = False
 
 # the delay time (ms) after each loop
-LOOP_DELAY = 50
+LOOP_DELAY = 0.05
 
 # the path of serial device
-SERIAL_DEVICE   = '/dev/ttyAMA0'
+SERIAL_DEVICE_PATH   = '/dev/ttyAMA0'
 SERIAL_BAUDRATE = 115200
 
 # state constants
@@ -22,59 +22,75 @@ STATE_CLOSED    = 1
 STATE_INVADED   = 2
 STATE_EMERGENCY = 3
 
-def main():
-    serial_device = serial.Serial(port=SERIAL_DEVICE,
-                                  baudrate=SERIAL_BAUDRATE,
-                                  parity=serial.PARITY_NONE,
-                                  stopbits=serial.STOPBITS_ONE,
-                                  bytesize=serial.EIGHTBITS,
-                                  timeout=1)
+# mutable global variables
+serial_device = serial.Serial(port=SERIAL_DEVICE_PATH,
+                              baudrate=SERIAL_BAUDRATE,
+                              parity=serial.PARITY_NONE,
+                              stopbits=serial.STOPBITS_ONE,
+                              bytesize=serial.EIGHTBITS,
+                              timeout=0)
 
+prev_door_state = False
+state = STATE_CLOSED
+
+# utility functions
+def is_door_open():
+    # TODO implementation
+    return False
+
+def is_authenticated():
+    # TODO implementation
+    return False
+
+def is_signaled_emergency():
+    payload = serial_device.read(size=65536)
+    return len(payload) > 0
+
+def open_door():
+    # TODO implementation
+    pass
+
+def warn_invaded():
+    serial_device.write('I')
+
+# event handlers
+def on_auth():
+    global state
+
+    if state == STATE_OPEN:     # ignore this case
+        return
+
+    elif state == STATE_CLOSED: # open the door
+        open_door()
+        state = STATE_OPEN
+
+    elif state in (STATE_INVADED, STATE_EMERGENCY): # reset to closed state
+        state = STATE_CLOSED
+
+def on_housebreaking():
+    logging.debug('housebreaking')
+    global state
+    state = STATE_INVADED
+    warn_invaded()
+
+def on_emergency():
+    logging.debug('emergency')
+    global state
+    state = STATE_EMERGENCY
+
+def on_door_close():
+    logging.debug('door closed')
+    global state
+    assert state == STATE_OPEN
+    state = STATE_CLOSED
+
+def main():
+    global prev_door_state
+    global state
+
+    # initialize
     prev_door_state = is_door_open()
     state = STATE_OPEN if prev_door_state else STATE_CLOSED
-
-    # utility functions
-    def is_door_open():
-        # TODO implementation
-        return True
-
-    def is_authenticated():
-        # TODO implementation
-        return True
-
-    def is_signaled_emergency():
-        payload = serial_device.read(size=65536)
-        return len(payload) > 0
-
-    def open_door():
-        # TODO implementation
-        pass
-
-    def warn_invaded():
-        serial_device.write('I')
-
-    # event handlers
-    def on_auth():
-        if state == STATE_OPEN:     # ignore this case
-            return
-
-        elif state == STATE_CLOSED: # open the door
-            open_door()
-            state = STATE_OPEN
-
-        elif state in (STATE_INVADED, STATE_EMERGENCY): # reset to closed state
-            state = STATE_CLOSED
-
-    def on_housebreaking():
-        state = STATE_INVADED
-        warn_invaded()
-
-    def on_emergency():
-        state = STATE_EMERGENCY
-
-    def on_door_close():
-        assert state == STATE_OPEN
-        state = STATE_CLOSED
 
     # monitor the events by polling
     while True:
