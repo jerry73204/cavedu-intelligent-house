@@ -1,5 +1,6 @@
 import time
 import cv2
+import config
 import utils
 
 FLAG_BUSY                = False
@@ -49,4 +50,4 @@ def auth_worker():
         else:                   # idle state
             _, frame = camera.read()
             cv2.imshow('', frame)
-            cv2.waitKey(1)
+            cv2.waitKey(config.FRAME_DELAY)

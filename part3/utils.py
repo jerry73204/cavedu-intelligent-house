@@ -50,7 +50,7 @@ def create_face_identity(camera):
             cv2.putText(orig_image, progress_text, (10, 30), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 240, 240), 1, 8)
             cv2.putText(orig_image, 'no face detected', (10, 60), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 0, 255), 1, 8)
             cv2.imshow('', orig_image)
-            cv2.waitKey(1)
+            cv2.waitKey(config.FRAME_DELAY)
             enable_training_time = time.time() + 1
             continue
 
@@ -59,7 +59,7 @@ def create_face_identity(camera):
             cv2.rectangle(orig_image, (x, y), (x + w, y + h), (0, 255, 0), 2)
             cv2.putText(orig_image, progress_text, (10, 30), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 240, 240), 1, 8)
             cv2.imshow('', orig_image)
-            cv2.waitKey(1)
+            cv2.waitKey(config.FRAME_DELAY)
 
         # skip the loop if the time is not ready
         if time.time() < enable_training_time:
@@ -116,7 +116,7 @@ def recognize_face(camera, model_descriptions):
         if result is None:
             cv2.putText(orig_image, 'Recognizing...', (10, 30), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 240, 240), 1, 8)
             cv2.imshow('', orig_image)
-            cv2.waitKey(1)
+            cv2.waitKey(config.FRAME_DELAY)
             continue
 
         else:
@@ -124,7 +124,7 @@ def recognize_face(camera, model_descriptions):
             cv2.rectangle(orig_image, (x, y), (x + w, y + h), (0, 255, 0), 2)
             cv2.putText(orig_image, 'Recognizing...', (10, 30), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 240, 240), 1, 8)
             cv2.imshow('', orig_image)
-            cv2.waitKey(1)
+            cv2.waitKey(config.FRAME_DELAY)
 
         # skip the loop if the time is not ready
         if time.time() < enable_recognitoin_time:
