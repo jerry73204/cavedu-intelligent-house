@@ -30,7 +30,8 @@ def auth_worker():
             FLAG_RECOGNITION_RESULT = False
 
             description = utils.create_face_identity(camera)
-            model_descriptions.append(description)
+            if description is not None:
+                model_descriptions.append(description)
 
             FLAG_BUSY = False
 
