@@ -32,8 +32,9 @@ serial_device = serial.Serial(port=config.SERIAL_DEVICE_PATH,
 prev_door_state = False
 state = STATE_CLOSED
 
-last_time_signaled_train_face = 0
-last_time_signaled_recognize_face = 0
+prev_value_train_face = False
+prev_value_recognize_face = False
+prev_value_auth = False
 
 # utility functions
 def is_door_open():
@@ -41,12 +42,15 @@ def is_door_open():
     return False
 
 def is_authenticated():
-    if not auth.FLAG_BUSY:
-        if auth.FLAG_RECOGNITION_RESULT:
-            auth.FLAG_RECOGNITION_RESULT = False
-            return time.time() <= auth.LAST_RECOGNITION_TIME + 5
-        else:
-            return False
+    global prev_value_auth
+
+    if auth.FLAG_BUSY:
+        return False
+
+    value = auth.FLAG_RECOGNITION_RESULT
+    result = (prev_value_auth ^ value) & value
+    prev_value_auth = value
+    return result
 
 def is_signaled_emergency():
     payload = serial_device.read(size=65536)
@@ -54,27 +58,19 @@ def is_signaled_emergency():
 
 def is_signaled_train_face():
     # TODO implementation
-    global last_time_signaled_train_face
-    if time.time() < last_time_signaled_train_face + 1:
-        return False
-
-    result = time.time() % 25 <= 0.3 # dummy impl.
-    if result:
-        last_time_signaled_train_face = time.time()
-
+    global prev_value_train_face
+    value = time.time() % 25 <= 0.3 # dummy impl.
+    result = (prev_value_train_face ^ value) & value
+    prev_value_train_face = value
     return result
 
 def is_signaled_recognize_face():
     # TODO implementation
-    global last_time_signaled_recognize_face
-    if time.time() < last_time_signaled_recognize_face + 1:
-        return False
-
+    global prev_value_recognize_face
     x = time.time() % 25
-    result = x >= 20 and x <= 20.3  # dummy impl.
-    if result:
-        last_time_signaled_recognize_face = time.time()
-
+    value = x >= 20 and x <= 20.3  # dummy impl.
+    result = (prev_value_recognize_face ^ value) & value
+    prev_value_recognize_face = value
     return result
 
 def open_door():
