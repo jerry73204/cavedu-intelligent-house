@@ -61,10 +61,6 @@ def create_face_identity(camera):
             cv2.imshow('', orig_image)
             cv2.waitKey(config.FRAME_DELAY)
 
-        # skip the loop if the time is not ready
-        if time.time() < enable_training_time:
-            continue
-
         cropped_image = resize_image(crop_image(gray_image, x, y, w, h))
         training_images.append(cropped_image)
 
@@ -124,10 +120,6 @@ def recognize_face(camera, model_descriptions):
             cv2.putText(orig_image, 'Recognizing...', (10, 30), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 240, 240), 1, 8)
             cv2.imshow('', orig_image)
             cv2.waitKey(config.FRAME_DELAY)
-
-        # skip the loop if the time is not ready
-        if time.time() < enable_recognitoin_time:
-            continue
 
         # calculate confidence and vote
         face_count += 1
