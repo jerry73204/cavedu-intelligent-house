@@ -3,9 +3,11 @@
 import time
 import logging
 import signal
+import time
 from threading import Thread
 import serial
 import cv2
+import RPi.GPIO as GPIO
 import auth
 import config
 
@@ -22,19 +24,14 @@ STATE_INVADED   = 2
 STATE_EMERGENCY = 3
 
 # mutable global variables
-serial_device = serial.Serial(port=config.SERIAL_DEVICE_PATH,
-                              baudrate=config.SERIAL_BAUDRATE,
-                              parity=serial.PARITY_NONE,
-                              stopbits=serial.STOPBITS_ONE,
-                              bytesize=serial.EIGHTBITS,
-                              timeout=0)
-
 prev_door_state = False
 state = STATE_CLOSED
 
 prev_value_train_face = False
 prev_value_recognize_face = False
 prev_value_auth = False
+prev_value_emergency = False
+prev_value_invaded = 0
 
 # utility functions
 def is_door_open():
@@ -53,8 +50,11 @@ def is_authenticated():
     return result
 
 def is_signaled_emergency():
-    payload = serial_device.read(size=65536)
-    return len(payload) > 0
+    global prev_value_emergency
+    value = GPIO.input(config.PIN_IN_EMERGENCY) == 1
+    result = (prev_value_emergency ^ value) & value
+    prev_value_emergency = value
+    return result
 
 def is_signaled_train_face():
     # TODO implementation
@@ -78,10 +78,12 @@ def open_door():
     pass
 
 def warn_invaded():
-    serial_device.write('I')
+    # TODO implementation
+    pass
 
 # event handlers
 def on_auth():
+    print 'pass'
     global state
 
     if state == STATE_OPEN:     # ignore this case
@@ -101,7 +103,7 @@ def on_housebreaking():
     warn_invaded()
 
 def on_emergency():
-    logging.debug('event emergency')
+    # logging.debug('event emergency')
     global state
     state = STATE_EMERGENCY
 
@@ -165,6 +167,14 @@ if __name__ == '__main__':
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
     signal.signal(signal.SIGINT, signal_handler)
+
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(config.PIN_OUT_INVADED, GPIO.OUT)
+    GPIO.setup(config.PIN_OUT_TIMEOUT, GPIO.OUT)
+    GPIO.setup(config.PIN_IN_EMERGENCY, GPIO.IN)
+
+    GPIO.output(config.PIN_OUT_INVADED, 0)
+    GPIO.output(config.PIN_OUT_TIMEOUT, 0)
 
     # run the main procedure
     logging.info('Access control system started')
