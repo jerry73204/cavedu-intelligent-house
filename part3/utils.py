@@ -72,7 +72,7 @@ def create_face_identity(camera):
         enable_training_time = time.time() + 1
 
     # return None if timeout
-    if image_count < config.NUM_SAMPLED_TRAINING_IMAGES:
+    if image_count == 0:
         return None
 
     # train model
@@ -102,7 +102,6 @@ def recognize_face(camera, model_descriptions):
 
     # start face recognition task
     face_count = 0
-    votings = [0] * len(trained_models)
     enable_recognitoin_time = time.time() + 1
     time_limit = time.time() + config.RECOGNITION_TASK_TIMEOUT
 
@@ -138,15 +137,6 @@ def recognize_face(camera, model_descriptions):
             label, confidence = model.predict(cropped_image)
 
             if label == POSITIVE_LABEL and confidence < config.CONFIDENCE_THRESHOLD:
-                votings[index] += 1
-
-    # answer negative if timeout
-    if face_count < config.NUM_SAMPLED_TESTING_IMAGES:
-        return False
-
-    # check if one succeeds the success rate:
-    for num_votes in votings:
-        if float(num_votes) / config.NUM_SAMPLED_TESTING_IMAGES >= config.SUCCESS_RATE_THRESHOLD:
-            return True
+		return True
 
     return False
