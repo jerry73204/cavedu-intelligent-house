@@ -5,7 +5,6 @@ import logging
 import signal
 import time
 from threading import Thread
-import serial
 import cv2
 import RPi.GPIO as GPIO
 import auth
@@ -17,6 +16,12 @@ SHUTDOWN_FLAG = False
 # the delay time (ms) after each loop
 LOOP_DELAY = 0.05
 
+# the timespan that the GPIO pin is set to 1
+OUTPUT_PIN_TIMESPAN = 0.03
+
+# do not send warning message for the timespan after the door is opened
+DOOR_OPEN_TIMESPAN = 5
+
 # state constants
 STATE_OPEN      = 0
 STATE_CLOSED    = 1
@@ -24,7 +29,7 @@ STATE_INVADED   = 2
 STATE_EMERGENCY = 3
 
 # mutable global variables
-prev_door_state = False
+prev_is_door_open = False
 state = STATE_CLOSED
 
 prev_value_train_face = False
@@ -32,6 +37,11 @@ prev_value_recognize_face = False
 prev_value_auth = False
 prev_value_emergency = False
 prev_value_invaded = 0
+
+signal_housebreak_timeout = 0
+signal_door_not_closed_timeout = 0
+
+door_open_timeout = 0
 
 # utility functions
 def is_door_open():
@@ -77,30 +87,41 @@ def open_door():
     # TODO implementation
     pass
 
-def warn_invaded():
-    # TODO implementation
-    pass
+def signal_housebreak():
+    global signal_housebreak_timeout
+    signal_housebreak_timeout = time.time() + OUTPUT_PIN_TIMESPAN
+    GPIO.output(config.PIN_OUT_INVADED, 1)
+
+def signal_door_not_closed():
+    global signal_door_not_closed_timeout
+    signal_door_not_closed_timeout = time.time() + OUTPUT_PIN_TIMESPAN
+    GPIO.output(config.PIN_OUT_TIMEOUT, 1)
 
 # event handlers
 def on_auth():
-    print 'pass'
+    global door_open_timeout
     global state
 
     if state == STATE_OPEN:     # ignore this case
         return
 
     elif state == STATE_CLOSED: # open the door
+        door_open_timeout = time.time() + DOOR_OPEN_TIMESPAN
         open_door()
         state = STATE_OPEN
 
     elif state in (STATE_INVADED, STATE_EMERGENCY): # reset to closed state
-        state = STATE_CLOSED
+        if is_door_open():
+            door_open_timeout = time.time() + DOOR_OPEN_TIMESPAN
+            state = STATE_OPEN
+        else:
+            state = STATE_CLOSED
 
 def on_housebreaking():
     logging.debug('event housebreaking')
     global state
     state = STATE_INVADED
-    warn_invaded()
+    signal_housebreak()
 
 def on_emergency():
     # logging.debug('event emergency')
@@ -114,7 +135,8 @@ def on_door_close():
     state = STATE_CLOSED
 
 def main():
-    global prev_door_state
+    global door_open_timeout
+    global prev_is_door_open
     global state
 
     # start authenticator thread
@@ -122,8 +144,8 @@ def main():
     auth_thread.start()
 
     # initialize
-    prev_door_state = is_door_open()
-    state = STATE_OPEN if prev_door_state else STATE_CLOSED
+    prev_is_door_open = is_door_open()
+    state = STATE_OPEN if prev_is_door_open else STATE_CLOSED
 
     # monitor the events by polling
     while True:
@@ -145,16 +167,25 @@ def main():
         elif is_authenticated():
             on_auth()
 
-        else:
-            curr_door_state = is_door_open()
+        elif state == STATE_OPEN:
+            curr_is_door_open = is_door_open()
 
-            if curr_door_state != prev_door_state:
-                if curr_door_state:
-                    on_housebreaking()
-                else:
-                    on_door_close()
+            if not curr_is_door_open:
+                on_door_close()
 
-            prev_door_state = curr_door_state
+            elif time.time() >= door_open_timeout:
+                door_open_timeout = time.time() + DOOR_OPEN_TIMESPAN
+                signal_door_not_closed()
+
+            prev_is_door_open = curr_is_door_open
+
+        elif state == STATE_CLOSED:
+            curr_is_door_open = is_door_open()
+
+            if curr_is_door_open:
+                on_housebreaking()
+
+            prev_is_door_open = curr_is_door_open
 
         time.sleep(LOOP_DELAY)
 
