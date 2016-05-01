@@ -6,7 +6,7 @@ void gas_led_setup(){
 }
 
 void gas_interruption(boolean power){
-  
+
   digitalWrite(pin_gas_led,power);
 }
 

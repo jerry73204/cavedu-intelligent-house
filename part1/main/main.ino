@@ -12,18 +12,18 @@ void loop() {
   Serial.println("-------------------");
   //----------check condition----------
   int Status = checkCondition();//0-normal,1-fire,2-earthquake,3-gas,4-door,5-invasion
-  
+
   //----------nothing happened----------
   if(Status == 0){
     Serial.println("nothing happened");
     mcs('s');
     delay(1000);
   }
-  
+
   //----------earthquake----------
   else if(Status == 1){
     Serial.println("earthquake strikes");
-    
+
     //----------warring----------
     buzz(true);
     warring_light(true);
@@ -31,12 +31,12 @@ void loop() {
     delay(1000);
     Serial.println("warring!");
     delay(1000);
-    
+
     //----------emergency light----------
     led_emg(true);
     Serial.println("turn on emergency light");
     delay(1000);
-    
+
     //----------send message----------
     sendText(1,'E');//Linkit One Text
     sendText(2,'E');//Light
@@ -44,31 +44,31 @@ void loop() {
     mcs('E');
     Serial.println("massage has been sent");
     delay(1000);
-    
+
     //----------safe----------
     Serial.println("silmulation over");
     sendText(2,'S');
     sendText(3,'S');
     delay(1000);
   }
-  
+
   //----------fire----------
   else if(Status == 2){
     Serial.println("house is on fire");
     delay(1000);
-    
+
     //----------warring----------
     buzz(true);
     warring_light(true);
     LCD("fire is detected in kitchen");
     Serial.println("warring!");
     delay(1000);
-    
+
     //----------emergency light----------
     led_emg(true);
     Serial.println("turn on emergency light");
     delay(1000);
-    
+
     //----------send message----------
     sendText(1,'F');//Linkit One Text
     sendText(2,'F');//Light
@@ -76,27 +76,27 @@ void loop() {
     mcs('F');
     Serial.println("massage has been sent");
     delay(1000);
-    
+
     //----------safe----------
     Serial.println("silmulation over");
     sendText(2,'S');
     sendText(3,'S');
     delay(1000);
   }
-  
+
   //----------gas leak----------
   else if(Status == 3){
     Serial.println("gas is leaking");
     delay(1000);
-    
+
     warring_light(true);
     Serial.println("warring!");
     delay(1000);
-    
+
     gas_interruption(true);
     Serial.println("gas_interruption");
     delay(1000);
-    
+
     fan(true);
     Serial.println("turn on fan");
     delay(1000);
@@ -104,35 +104,35 @@ void loop() {
     sendText(1,'G');
     mcs('G');
     Serial.println("massage has been sent");
-    
+
     delay(1000);
     Serial.println("silmulation over");
   }
-  
+
   //----------door not close----------
   else if(Status == 4){
     Serial.println("door is not closed");
     delay(1000);
-    
+
     //----------send message----------
     sendText(1,'D');
     mcs('D');
     Serial.println("massage has been sent");
     delay(1000);
   }
-  
+
   //----------house is invaded----------
   else if(Status == 5){
     Serial.println("some enter into the house");
     delay(1000);
-    
+
     //----------send message----------
     sendText(1,'I');
     mcs('I');
     Serial.println("massage has been sent");
     delay(1000);
   }
-  
+
   //----------sensor value----------
   Serial.println("-------------------");
   Serial.print("gas sensor:  ");
@@ -145,7 +145,7 @@ void loop() {
   Serial.println(flame_sensor3());
   Serial.print("geophone:  ");
   Serial.println(geophone());
-  
+
 }
 
 int checkCondition(){

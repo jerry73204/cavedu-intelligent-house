@@ -40,11 +40,11 @@ char readText(){
   else if(digitalRead(pi2)){
     return 'D';
   }
-  
+
   else if(Serial.available()){
     return Serial.read();
   }
-  
+
   else{
     return 'S';
   }

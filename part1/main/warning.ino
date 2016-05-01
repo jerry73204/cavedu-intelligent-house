@@ -12,5 +12,5 @@ void warring_light(boolean power){
 }
 
 void LCD(String text){
-  
+
 }
