@@ -1,14 +1,17 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import time
 import logging
 import signal
-import time
-from threading import Thread
+import asyncio
+import concurrent.futures
+
 import cv2
 import RPi.GPIO as GPIO
-import auth
+
 import config
+import face_auth
+import mediatek_cloud
 
 # flag indicating if any signal is received
 SHUTDOWN_FLAG = False
@@ -28,184 +31,254 @@ STATE_CLOSED    = 1
 STATE_INVADED   = 2
 STATE_EMERGENCY = 3
 
-# mutable global variables
-prev_is_door_open = False
-state = STATE_CLOSED
+# global variables
+PREV_DOOR_OPEN = False
+PREV_DOOR_CLOSED = False
+PREV_VALUE_EMERGENCY = False
+PREV_VALUE_TRAIN_FACE = False
+PREV_VALUE_RECOGNIZE_FACE = False
+PREV_STATE_1 = None
+PREV_STATE_2 = None
 
-prev_value_train_face = False
-prev_value_recognize_face = False
-prev_value_auth = False
-prev_value_emergency = False
-prev_value_invaded = 0
+STATE_CHANGE_TIME = 0
 
-signal_housebreak_timeout = 0
-signal_door_not_closed_timeout = 0
+STATE = STATE_CLOSED
 
-door_open_timeout = 0
+FACE_AUTH_SERVICE = None
+
+FUTURE_RECOGNIZE_FACE = None
 
 # utility functions
+def run_in_background(func):
+    asyncio.get_event_loop().run_in_executor(None, func)
+
 def is_door_open():
-    # TODO implementation
-    return False
+    return GPIO.input(config.PIN_IN_MAGNET_SWITCH) == 0
+
+def is_door_opening():
+    global PREV_DOOR_OPEN
+    value = is_door_open()
+    result = (PREV_DOOR_OPEN ^ value) & value
+    PREV_DOOR_OPEN = value
+    return value
+
+def is_door_closing():
+    global PREV_DOOR_CLOSED
+    value = not is_door_open()
+    result = (PREV_DOOR_CLOSED ^ value) & value
+    PREV_DOOR_CLOSED = value
+    return value
 
 def is_authenticated():
-    global prev_value_auth
+    global FUTURE_RECOGNIZE_FACE
+    return FUTURE_RECOGNIZE_FACE is not None and FUTURE_RECOGNIZE_FACE.done() and FUTURE_RECOGNIZE_FACE.result():
 
-    if auth.FLAG_BUSY:
-        return False
-
-    value = auth.FLAG_RECOGNITION_RESULT
-    result = (prev_value_auth ^ value) & value
-    prev_value_auth = value
-    return result
 
 def is_signaled_emergency():
-    global prev_value_emergency
+    global PREV_VALUE_EMERGENCY
     value = GPIO.input(config.PIN_IN_EMERGENCY) == 1
-    result = (prev_value_emergency ^ value) & value
-    prev_value_emergency = value
+    result = (PREV_VALUE_EMERGENCY ^ value) & value
+    PREV_VALUE_EMERGENCY = value
     return result
 
 def is_signaled_train_face():
     # TODO implementation
-    global prev_value_train_face
+    global PREV_VALUE_TRAIN_FACE
     value = time.time() % 25 <= 0.3 # dummy impl.
-    result = (prev_value_train_face ^ value) & value
-    prev_value_train_face = value
+    result = (PREV_VALUE_TRAIN_FACE ^ value) & value
+    PREV_VALUE_TRAIN_FACE = value
     return result
 
 def is_signaled_recognize_face():
     # TODO implementation
-    global prev_value_recognize_face
+    global PREV_VALUE_RECOGNIZE_FACE
     x = time.time() % 25
     value = x >= 20 and x <= 20.3  # dummy impl.
-    result = (prev_value_recognize_face ^ value) & value
-    prev_value_recognize_face = value
+    result = (PREV_VALUE_RECOGNIZE_FACE ^ value) & value
+    PREV_VALUE_RECOGNIZE_FACE = value
     return result
 
-def open_door():
-    # TODO implementation
-    pass
+def is_state_changed():
+    global PREV_STATE_1
+    result = PREV_STATE_1 != STATE
+    PREV_STATE_1 = STATE
+    return result
 
-def signal_housebreak():
-    global signal_housebreak_timeout
-    signal_housebreak_timeout = time.time() + OUTPUT_PIN_TIMESPAN
-    GPIO.output(config.PIN_OUT_INVADED, 1)
+def is_state_unchanged():
+    global PREV_STATE_2
+    result = PREV_STATE_2 == STATE
+    PREV_STATE_2 = STATE
+    return result
 
-def signal_door_not_closed():
-    global signal_door_not_closed_timeout
-    signal_door_not_closed_timeout = time.time() + OUTPUT_PIN_TIMESPAN
-    GPIO.output(config.PIN_OUT_TIMEOUT, 1)
+def action_open_door():
+    def routine():
+        GPIO.output(config.PIN_OUT_LOCK, 1)
+        time.sleep(0.5)
+        GPIO.output(config.PIN_OUT_LOCK, 0)
+    run_in_background(routine)
+
+def action_signal_housebreak():
+    def routine():
+        GPIO.output(config.PIN_OUT_INVADED, 1)
+        time.sleep(0.5)
+        GPIO.output(config.PIN_OUT_INVADED, 0)
+    run_in_background(routine)
+
+def action_signal_door_not_closed():
+    def routine():
+        GPIO.output(config.PIN_OUT_TIMEOUT, 1)
+        time.sleep(0.5)
+        GPIO.output(config.PIN_OUT_TIMEOUT, 0)
+    run_in_background(routine)
+
+def action_check_door_open_overtime(expected_state_change_time):
+    def routine():
+        time.sleep(DOOR_OPEN_TIMESPAN)
+        if is_door_open() and STATE_CHANGE_TIME == expected_state_change_time:
+            action_signal_door_not_closed()
+    run_in_background(routine)
+
+def action_train_face():
+    if not FACE_AUTH_SERVICE.schedule_train_face():
+        logging.warning('face auth serive is busy')
+
+def action_recognize_face():
+    global FUTURE_RECOGNIZE_FACE
+
+    if FUTURE_RECOGNIZE_FACE is None:
+        future = concurrent.futures.Future()
+
+        if FACE_AUTH_SERVICE.schedule_recognize_face(future):
+            FUTURE_RECOGNIZE_FACE = future
+        else:
+            logging.warning('face auth serive is busy')
+
+    else:
+        logging.warning('previous face recognition task is not finished yet')
 
 # event handlers
 def on_auth():
-    global door_open_timeout
-    global state
+    logging.debug('event auth')
+    global STATE
 
-    if state == STATE_OPEN:     # ignore this case
+    if STATE == STATE_OPEN:     # ignore this case
         return
 
-    elif state == STATE_CLOSED: # open the door
-        door_open_timeout = time.time() + DOOR_OPEN_TIMESPAN
-        open_door()
-        state = STATE_OPEN
-
-    elif state in (STATE_INVADED, STATE_EMERGENCY): # reset to closed state
-        if is_door_open():
-            door_open_timeout = time.time() + DOOR_OPEN_TIMESPAN
-            state = STATE_OPEN
-        else:
-            state = STATE_CLOSED
+    elif STATE in (STATE_CLOSED, STATE_INVADED, STATE_EMERGENCY): # reset to closed state
+        action_open_door()
+        set_house_status('DOOR OPEN')
+        STATE = STATE_OPEN
 
 def on_housebreaking():
     logging.debug('event housebreaking')
-    global state
-    state = STATE_INVADED
-    signal_housebreak()
+    global STATE
+    STATE = STATE_INVADED
+    mediatek_cloud.set_house_status('INVADED')
+    action_signal_housebreak()
 
 def on_emergency():
-    # logging.debug('event emergency')
-    global state
-    state = STATE_EMERGENCY
+    logging.debug('event emergency')
+    global STATE
+    mediatek_cloud.set_house_status('EMERGENCY')
+    STATE = STATE_EMERGENCY
 
-def on_door_close():
-    logging.debug('event door closed')
-    global state
-    assert state == STATE_OPEN
-    state = STATE_CLOSED
+def on_door_opening():
+    logging.debug('event door_opening')
+
+    if STATE == STATE_CLOSED:
+        on_housebreaking()
+
+def on_door_closing():
+    global STATE
+    logging.debug('event door_closing')
+
+    if STATE == STATE_CLOSED:
+        logging.warning('event door_closing is triggered in CLOSED state')
+
+    elif STATE == STATE_OPEN:
+        set_house_status('DOOR CLOSED')
+        STATE = STATE_CLOSED
+
+def on_state_changed():
+    global STATE
+    global STATE_CHANGE_TIME
+
+    STATE_CHANGE_TIME = time.time()
+
+    if STATE == STATE_OPEN:
+        action_check_door_open_overtime(STATE_CHANGE_TIME)
+
+def on_state_unchanged():
+    pass
 
 def main():
-    global door_open_timeout
-    global prev_is_door_open
-    global state
-
-    # start authenticator thread
-    auth_thread = Thread(target=auth.auth_worker)
-    auth_thread.start()
+    global STATE
+    global PREV_STATE_1
+    global PREV_STATE_2
 
     # initialize
-    prev_is_door_open = is_door_open()
-    state = STATE_OPEN if prev_is_door_open else STATE_CLOSED
+    STATE = PREV_STATE_1 = PREV_STATE_2 = STATE_OPEN if is_door_open() else STATE_CLOSED
 
     # monitor the events by polling
     while True:
         if SHUTDOWN_FLAG:
             logging.info('Shutting down...')
-            auth.FLAG_SHUTDOWN = True
-            auth_thread.join()
             exit()
 
-        elif is_signaled_emergency():
+        # check events
+        if is_signaled_emergency():
             on_emergency()
 
         elif is_signaled_train_face():
-            auth.FLAG_TRAIN_REQUEST = True
+            action_train_face()
 
         elif is_signaled_recognize_face():
-            auth.FLAG_RECOGNITION_REQUEST = True
+            action_recognize_face()
 
         elif is_authenticated():
             on_auth()
 
-        elif state == STATE_OPEN:
-            curr_is_door_open = is_door_open()
+        elif is_door_opening():
+            on_door_opening()
 
-            if not curr_is_door_open:
-                on_door_close()
+        elif is_door_closing():
+            on_door_closing()
 
-            elif time.time() >= door_open_timeout:
-                door_open_timeout = time.time() + DOOR_OPEN_TIMESPAN
-                signal_door_not_closed()
 
-            prev_is_door_open = curr_is_door_open
+        if is_state_changed():
+            on_state_changed()
 
-        elif state == STATE_CLOSED:
-            curr_is_door_open = is_door_open()
-
-            if curr_is_door_open:
-                on_housebreaking()
-
-            prev_is_door_open = curr_is_door_open
+        else:
+            on_state_unchanged()
 
         time.sleep(LOOP_DELAY)
 
 def signal_handler(signum, frame):
     global SHUTDOWN_FLAG
+    global FACE_AUTH_SERVICE
+    FACE_AUTH_SERVICE.stop()
     SHUTDOWN_FLAG = True
 
 if __name__ == '__main__':
-    # setup
+    # setup logger and signal handlers
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
     signal.signal(signal.SIGINT, signal_handler)
 
+    # setup GPI Opins
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(config.PIN_OUT_INVADED, GPIO.OUT)
     GPIO.setup(config.PIN_OUT_TIMEOUT, GPIO.OUT)
+    GPIO.setup(config.PIN_OUT_LOCK, GPIO.OUT)
     GPIO.setup(config.PIN_IN_EMERGENCY, GPIO.IN)
+    GPIO.setup(config.PIN_IN_MAGNET_SWITCH, GPIO.IN)
 
     GPIO.output(config.PIN_OUT_INVADED, 0)
     GPIO.output(config.PIN_OUT_TIMEOUT, 0)
+
+    # setup face authentication service
+    FACE_AUTH_SERVICE = face_auth.FaceAuthServie(config.FACES_DATABASE_PATH)
+    FACE_AUTH_SERVICE.start()
 
     # run the main procedure
     logging.info('Access control system started')

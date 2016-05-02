@@ -1,9 +1,12 @@
-#!/usr/bin/env python2
-# -*- coding: utf-8 -*-
+import os.path
+import pickle
 import time
 import tempfile
+from threading import Thread
+
 import numpy
 import cv2
+
 import config
 
 POSITIVE_LABEL = 1
@@ -129,6 +132,83 @@ def recognize_face(camera, model_descriptions):
             label, confidence = model.predict(cropped_image)
 
             if label == POSITIVE_LABEL and confidence < config.CONFIDENCE_THRESHOLD:
-		return True
+                return True
 
     return False
+
+class FaceAuthServie:
+    def __init__(self, face_models_path):
+        self.auth_thread = None
+        self.flag_shutdown = False
+        self.flag_train_request = False
+        self.flag_recognition_request = False
+        self.is_busy = False
+        self.future_recognize_result = None
+
+        self.face_models_path = face_models_path
+
+        if os.path.isfile(face_models_path):
+            with open(face_models_path, 'rb') as file_models:
+                self.model_descriptions = pickle.load(file_models)
+                assert isinstance(self.model_descriptions, list)
+
+        else:
+            self.model_descriptions = list()
+
+    def worker(self):
+        camera = cv2.VideoCapture(0)
+
+        print(self.flag_train_request)
+
+        while True:
+            if self.flag_shutdown:
+                return
+
+            elif self.flag_train_request:
+                self.is_busy = True
+                description = create_face_identity(camera)
+
+                if description is not None:
+                    self.model_descriptions.append(description)
+
+                self.flag_train_request = False
+                self.is_busy = False
+
+            elif self.flag_recognition_request:
+                self.is_busy = True
+                result = recognize_face(camera, self.model_descriptions)
+                self.future_recognize_result.set_result(result)
+                self.flag_recognition_request = False
+                self.is_busy = False
+
+            else:                   # idle state
+                _, frame = camera.read()
+                cv2.imshow('', frame)
+                cv2.waitKey(config.FRAME_DELAY)
+
+    def start(self):
+        self.auth_thread = Thread(target=self.worker)
+        self.auth_thread.start()
+
+    def stop(self):
+        self.flag_shutdown = True
+
+        with open(self.face_models_path, 'wb') as file_models:
+            pickle.dump(self.model_descriptions, file_models)
+
+        self.auth_thread.join()
+
+    def schedule_train_face(self):
+        if not self.is_busy:
+            self.flag_train_request = True
+            return True
+        else:
+            return False
+
+    def schedule_recognize_face(self, future):
+        if not self.is_busy:
+            self.future_recognize_result = future
+            self.flag_recognition_request = True
+            return True
+        else:
+            return False

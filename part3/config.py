@@ -1,13 +1,22 @@
-# gpio
-PIN_OUT_INVADED = 21
-PIN_OUT_TIMEOUT = 20
-PIN_IN_EMERGENCY = 16
+# GPIO
+PIN_OUT_INVADED      = 21
+PIN_OUT_TIMEOUT      = 20
+PIN_OUT_LOCK         = 0
+PIN_IN_EMERGENCY     = 16
+PIN_IN_MAGNET_SWITCH = 0
 
 # serial
 SERIAL_DEVICE_PATH   = '/dev/ttyS0'
 SERIAL_BAUDRATE = 9600
 
+# MediaTek cloud
+DEVICE_ID = 'DzBGkc0A'
+DEVICE_KEY = 'fCjvVayRCGIrPkr6'
+CHANNEL_STATUS_ID = 'house_status'
+
 # face recognition
+FACES_DATABASE_PATH = './faces.db'
+
 FRAME_DELAY = 20
 
 TRAINING_TASK_TIMEOUT = 20
