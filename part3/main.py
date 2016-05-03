@@ -71,7 +71,7 @@ def is_door_closing():
 
 def is_authenticated():
     global FUTURE_RECOGNIZE_FACE
-    return FUTURE_RECOGNIZE_FACE is not None and FUTURE_RECOGNIZE_FACE.done() and FUTURE_RECOGNIZE_FACE.result():
+    return FUTURE_RECOGNIZE_FACE is not None and FUTURE_RECOGNIZE_FACE.done() and FUTURE_RECOGNIZE_FACE.result()
 
 
 def is_signaled_emergency():

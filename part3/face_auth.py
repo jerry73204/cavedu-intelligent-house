@@ -25,9 +25,9 @@ def detect_single_face(image):
 
 def crop_image(image, x, y, w, h):
     crop_height = int((config.FACE_HEIGHT / float(config.FACE_WIDTH)) * w)
-    midy = y + h / 2
-    y1 = max(0, midy-crop_height / 2)
-    y2 = min(image.shape[0] - 1, midy + crop_height / 2)
+    midy = y + h // 2
+    y1 = max(0, midy - crop_height // 2)
+    y2 = min(image.shape[0] - 1, midy + crop_height // 2)
     return image[y1:y2, x:(x + w)]
 
 def resize_image(image):
@@ -41,7 +41,7 @@ def create_face_identity(camera):
 
     # start training task
     while image_count < config.NUM_SAMPLED_TRAINING_IMAGES and time.time() < time_limit:
-        progress_text = 'training... %d %%' % (image_count * 100 / config.NUM_SAMPLED_TRAINING_IMAGES)
+        progress_text = 'training... %d %%' % (image_count * 100 // config.NUM_SAMPLED_TRAINING_IMAGES)
         _, orig_image = camera.read()
 
         # get coordinates of single face in captured image
@@ -76,7 +76,7 @@ def create_face_identity(camera):
 
     # train model
     labels = [POSITIVE_LABEL] * len(training_images) # create the label array
-    model = cv2.createEigenFaceRecognizer()
+    model = cv2.face.createEigenFaceRecognizer()
     model.train(numpy.asarray(training_images), numpy.asarray(labels))
 
     # obtain the result
@@ -95,7 +95,7 @@ def recognize_face(camera, model_descriptions):
             tmp_file.file.write(description)
             tmp_file.flush()
 
-            model = cv2.createEigenFaceRecognizer()
+            model = cv2.face.createEigenFaceRecognizer()
             model.load(tmp_file.name)
             trained_models.append(model)
 
@@ -129,7 +129,10 @@ def recognize_face(camera, model_descriptions):
         cropped_image = resize_image(crop_image(gray_image, x, y, w, h))
 
         for index, model in enumerate(trained_models):
-            label, confidence = model.predict(cropped_image)
+            # label, confidence = model.predict(cropped_image)
+            predict_collector = cv2.face.MinDistancePredictCollector()
+            model.predict(cropped_image, predict_collector)
+            label, confidence = predict_collector.getLabel(), predict_collector.getDist()
 
             if label == POSITIVE_LABEL and confidence < config.CONFIDENCE_THRESHOLD:
                 return True
@@ -158,10 +161,10 @@ class FaceAuthServie:
     def worker(self):
         camera = cv2.VideoCapture(0)
 
-        print(self.flag_train_request)
-
         while True:
             if self.flag_shutdown:
+                with open(self.face_models_path, 'wb') as file_models:
+                    pickle.dump(self.model_descriptions, file_models)
                 return
 
             elif self.flag_train_request:
@@ -192,10 +195,6 @@ class FaceAuthServie:
 
     def stop(self):
         self.flag_shutdown = True
-
-        with open(self.face_models_path, 'wb') as file_models:
-            pickle.dump(self.model_descriptions, file_models)
-
         self.auth_thread.join()
 
     def schedule_train_face(self):
