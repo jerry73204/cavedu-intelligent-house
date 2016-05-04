@@ -6,7 +6,6 @@ import signal
 import asyncio
 import concurrent.futures
 
-import cv2
 import RPi.GPIO as GPIO
 
 import config
@@ -60,19 +59,19 @@ def is_door_opening():
     value = is_door_open()
     result = (PREV_DOOR_OPEN ^ value) & value
     PREV_DOOR_OPEN = value
-    return value
+    return result
 
 def is_door_closing():
     global PREV_DOOR_CLOSED
     value = not is_door_open()
     result = (PREV_DOOR_CLOSED ^ value) & value
     PREV_DOOR_CLOSED = value
-    return value
+    return result
 
 def is_authenticated():
-    global FUTURE_RECOGNIZE_FACE
-    return FUTURE_RECOGNIZE_FACE is not None and FUTURE_RECOGNIZE_FACE.done() and FUTURE_RECOGNIZE_FACE.result()
-
+    return FUTURE_RECOGNIZE_FACE is not None and \
+        FUTURE_RECOGNIZE_FACE.done() and \
+        FUTURE_RECOGNIZE_FACE.result()
 
 def is_signaled_emergency():
     global PREV_VALUE_EMERGENCY
@@ -166,7 +165,7 @@ def on_auth():
 
     elif STATE in (STATE_CLOSED, STATE_INVADED, STATE_EMERGENCY): # reset to closed state
         action_open_door()
-        set_house_status('DOOR OPEN')
+        mediatek_cloud.set_house_status('DOOR OPEN')
         STATE = STATE_OPEN
 
 def on_housebreaking():
@@ -196,7 +195,7 @@ def on_door_closing():
         logging.warning('event door_closing is triggered in CLOSED state')
 
     elif STATE == STATE_OPEN:
-        set_house_status('DOOR CLOSED')
+        mediatek_cloud.set_house_status('DOOR CLOSED')
         STATE = STATE_CLOSED
 
 def on_state_changed():
