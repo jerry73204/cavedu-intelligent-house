@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+import sys
 import time
 import logging
 import signal
@@ -9,6 +10,7 @@ import concurrent.futures
 import RPi.GPIO as GPIO
 
 import config
+import rfid
 import face_auth
 import mediatek_cloud
 
@@ -69,9 +71,15 @@ def is_door_closing():
     return result
 
 def is_authenticated():
-    return FUTURE_RECOGNIZE_FACE is not None and \
-        FUTURE_RECOGNIZE_FACE.done() and \
-        FUTURE_RECOGNIZE_FACE.result()
+    global FUTURE_RECOGNIZE_FACE
+
+    result = rfid.read_tag() is not None
+
+    if FUTURE_RECOGNIZE_FACE is not None and FUTURE_RECOGNIZE_FACE.done():
+        result |= FUTURE_RECOGNIZE_FACE.result()
+        FUTURE_RECOGNIZE_FACE = None
+
+    return result
 
 def is_signaled_emergency():
     global PREV_VALUE_EMERGENCY
@@ -83,7 +91,9 @@ def is_signaled_emergency():
 def is_signaled_train_face():
     # TODO implementation
     global PREV_VALUE_TRAIN_FACE
-    value = time.time() % 25 <= 0.3 # dummy impl.
+    print('signal train face? ', end='')
+    sys.stdout.flush()
+    value = sys.stdin.readline() != '0\n'
     result = (PREV_VALUE_TRAIN_FACE ^ value) & value
     PREV_VALUE_TRAIN_FACE = value
     return result
@@ -91,8 +101,9 @@ def is_signaled_train_face():
 def is_signaled_recognize_face():
     # TODO implementation
     global PREV_VALUE_RECOGNIZE_FACE
-    x = time.time() % 25
-    value = x >= 20 and x <= 20.3  # dummy impl.
+    print('signal recognize face? ', end='')
+    sys.stdout.flush()
+    value = sys.stdin.readline() != '0\n'
     result = (PREV_VALUE_RECOGNIZE_FACE ^ value) & value
     PREV_VALUE_RECOGNIZE_FACE = value
     return result
@@ -163,23 +174,25 @@ def on_auth():
     if STATE == STATE_OPEN:     # ignore this case
         return
 
-    elif STATE in (STATE_CLOSED, STATE_INVADED, STATE_EMERGENCY): # reset to closed state
+    elif STATE in (STATE_CLOSED, STATE_INVADED, STATE_EMERGENCY): # reset to door open state
         action_open_door()
         mediatek_cloud.set_house_status('DOOR OPEN')
         STATE = STATE_OPEN
 
 def on_housebreaking():
-    logging.debug('event housebreaking')
     global STATE
-    STATE = STATE_INVADED
-    mediatek_cloud.set_house_status('INVADED')
-    action_signal_housebreak()
+    if STATE != STATE_INVADED:
+        logging.debug('event housebreaking')
+        STATE = STATE_INVADED
+        mediatek_cloud.set_house_status('INVADED')
+        action_signal_housebreak()
 
 def on_emergency():
-    logging.debug('event emergency')
     global STATE
-    mediatek_cloud.set_house_status('EMERGENCY')
-    STATE = STATE_EMERGENCY
+    if STATE != STATE_EMERGENCY:
+        logging.debug('event emergency')
+        mediatek_cloud.set_house_status('EMERGENCY')
+        STATE = STATE_EMERGENCY
 
 def on_door_opening():
     logging.debug('event door_opening')
