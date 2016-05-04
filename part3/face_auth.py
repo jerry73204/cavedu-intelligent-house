@@ -1,9 +1,12 @@
-#!/usr/bin/env python2
-# -*- coding: utf-8 -*-
+import os.path
+import pickle
 import time
 import tempfile
+from threading import Thread
+
 import numpy
 import cv2
+
 import config
 
 POSITIVE_LABEL = 1
@@ -22,9 +25,9 @@ def detect_single_face(image):
 
 def crop_image(image, x, y, w, h):
     crop_height = int((config.FACE_HEIGHT / float(config.FACE_WIDTH)) * w)
-    midy = y + h / 2
-    y1 = max(0, midy-crop_height / 2)
-    y2 = min(image.shape[0] - 1, midy + crop_height / 2)
+    midy = y + h // 2
+    y1 = max(0, midy - crop_height // 2)
+    y2 = min(image.shape[0] - 1, midy + crop_height // 2)
     return image[y1:y2, x:(x + w)]
 
 def resize_image(image):
@@ -38,7 +41,7 @@ def create_face_identity(camera):
 
     # start training task
     while image_count < config.NUM_SAMPLED_TRAINING_IMAGES and time.time() < time_limit:
-        progress_text = 'training... %d %%' % (image_count * 100 / config.NUM_SAMPLED_TRAINING_IMAGES)
+        progress_text = 'training... %d %%' % (image_count * 100 // config.NUM_SAMPLED_TRAINING_IMAGES)
         _, orig_image = camera.read()
 
         # get coordinates of single face in captured image
@@ -50,7 +53,7 @@ def create_face_identity(camera):
             cv2.putText(orig_image, progress_text, (10, 30), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 240, 240), 1, 8)
             cv2.putText(orig_image, 'no face detected', (10, 60), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 0, 255), 1, 8)
             cv2.imshow('', orig_image)
-            cv2.waitKey(1)
+            cv2.waitKey(config.FRAME_DELAY)
             enable_training_time = time.time() + 1
             continue
 
@@ -59,11 +62,7 @@ def create_face_identity(camera):
             cv2.rectangle(orig_image, (x, y), (x + w, y + h), (0, 255, 0), 2)
             cv2.putText(orig_image, progress_text, (10, 30), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 240, 240), 1, 8)
             cv2.imshow('', orig_image)
-            cv2.waitKey(1)
-
-        # skip the loop if the time is not ready
-        if time.time() < enable_training_time:
-            continue
+            cv2.waitKey(config.FRAME_DELAY)
 
         cropped_image = resize_image(crop_image(gray_image, x, y, w, h))
         training_images.append(cropped_image)
@@ -72,12 +71,12 @@ def create_face_identity(camera):
         enable_training_time = time.time() + 1
 
     # return None if timeout
-    if image_count < config.NUM_SAMPLED_TRAINING_IMAGES:
+    if image_count == 0:
         return None
 
     # train model
     labels = [POSITIVE_LABEL] * len(training_images) # create the label array
-    model = cv2.createEigenFaceRecognizer()
+    model = cv2.face.createEigenFaceRecognizer()
     model.train(numpy.asarray(training_images), numpy.asarray(labels))
 
     # obtain the result
@@ -96,13 +95,12 @@ def recognize_face(camera, model_descriptions):
             tmp_file.file.write(description)
             tmp_file.flush()
 
-            model = cv2.createEigenFaceRecognizer()
+            model = cv2.face.createEigenFaceRecognizer()
             model.load(tmp_file.name)
             trained_models.append(model)
 
     # start face recognition task
     face_count = 0
-    votings = [0] * len(trained_models)
     enable_recognitoin_time = time.time() + 1
     time_limit = time.time() + config.RECOGNITION_TASK_TIMEOUT
 
@@ -116,7 +114,7 @@ def recognize_face(camera, model_descriptions):
         if result is None:
             cv2.putText(orig_image, 'Recognizing...', (10, 30), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 240, 240), 1, 8)
             cv2.imshow('', orig_image)
-            cv2.waitKey(1)
+            cv2.waitKey(config.FRAME_DELAY)
             continue
 
         else:
@@ -124,29 +122,92 @@ def recognize_face(camera, model_descriptions):
             cv2.rectangle(orig_image, (x, y), (x + w, y + h), (0, 255, 0), 2)
             cv2.putText(orig_image, 'Recognizing...', (10, 30), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 240, 240), 1, 8)
             cv2.imshow('', orig_image)
-            cv2.waitKey(1)
-
-        # skip the loop if the time is not ready
-        if time.time() < enable_recognitoin_time:
-            continue
+            cv2.waitKey(config.FRAME_DELAY)
 
         # calculate confidence and vote
         face_count += 1
         cropped_image = resize_image(crop_image(gray_image, x, y, w, h))
 
         for index, model in enumerate(trained_models):
-            label, confidence = model.predict(cropped_image)
+            # label, confidence = model.predict(cropped_image)
+            predict_collector = cv2.face.MinDistancePredictCollector()
+            model.predict(cropped_image, predict_collector)
+            label, confidence = predict_collector.getLabel(), predict_collector.getDist()
 
             if label == POSITIVE_LABEL and confidence < config.CONFIDENCE_THRESHOLD:
-                votings[index] += 1
-
-    # answer negative if timeout
-    if face_count < config.NUM_SAMPLED_TESTING_IMAGES:
-        return False
-
-    # check if one succeeds the success rate:
-    for num_votes in votings:
-        if float(num_votes) / config.NUM_SAMPLED_TESTING_IMAGES >= config.SUCCESS_RATE_THRESHOLD:
-            return True
+                return True
 
     return False
+
+class FaceAuthServie:
+    def __init__(self, face_models_path):
+        self.auth_thread = None
+        self.flag_shutdown = False
+        self.flag_train_request = False
+        self.flag_recognition_request = False
+        self.is_busy = False
+        self.future_recognize_result = None
+
+        self.face_models_path = face_models_path
+
+        if os.path.isfile(face_models_path):
+            with open(face_models_path, 'rb') as file_models:
+                self.model_descriptions = pickle.load(file_models)
+                assert isinstance(self.model_descriptions, list)
+
+        else:
+            self.model_descriptions = list()
+
+    def worker(self):
+        camera = cv2.VideoCapture(0)
+
+        while True:
+            if self.flag_shutdown:
+                with open(self.face_models_path, 'wb') as file_models:
+                    pickle.dump(self.model_descriptions, file_models)
+                return
+
+            elif self.flag_train_request:
+                self.is_busy = True
+                description = create_face_identity(camera)
+
+                if description is not None:
+                    self.model_descriptions.append(description)
+
+                self.flag_train_request = False
+                self.is_busy = False
+
+            elif self.flag_recognition_request:
+                self.is_busy = True
+                result = recognize_face(camera, self.model_descriptions)
+                self.future_recognize_result.set_result(result)
+                self.flag_recognition_request = False
+                self.is_busy = False
+
+            else:                   # idle state
+                _, frame = camera.read()
+                cv2.imshow('', frame)
+                cv2.waitKey(config.FRAME_DELAY)
+
+    def start(self):
+        self.auth_thread = Thread(target=self.worker)
+        self.auth_thread.start()
+
+    def stop(self):
+        self.flag_shutdown = True
+        self.auth_thread.join()
+
+    def schedule_train_face(self):
+        if not self.is_busy:
+            self.flag_train_request = True
+            return True
+        else:
+            return False
+
+    def schedule_recognize_face(self, future):
+        if not self.is_busy:
+            self.future_recognize_result = future
+            self.flag_recognition_request = True
+            return True
+        else:
+            return False

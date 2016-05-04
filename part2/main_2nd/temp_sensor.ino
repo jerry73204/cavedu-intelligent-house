@@ -5,9 +5,9 @@ int TempSensor(int pin)
 
   if (pin == 4)
   {
-    t = dht1.readTemperature();   
+    t = dht1.readTemperature();
   }
-  
+
   else if (pin == 8)
   {
     t = dht2.readTemperature();
