@@ -58,7 +58,7 @@ void setup() {
 
   delay(5);
   Serial1.println("R");
-  
+
   //////init led///////
 
   strip.begin();
@@ -84,7 +84,7 @@ void loop() {
 
   String read_meg = "";
 
-  if (linkit7688.available() || danger) 
+  if (linkit7688.available() || danger)
   {
     while (linkit7688.available())
     {
