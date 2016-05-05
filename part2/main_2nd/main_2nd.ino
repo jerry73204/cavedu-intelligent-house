@@ -1,23 +1,29 @@
 #include <Adafruit_NeoPixel.h>
 #include <DHT.h>
 #include <FlexiTimer2.h>
+#include <SoftwareSerial.h>
+
+/////define pin/////
 
 #define DHTPIN1 4 //outside
 #define DHTPIN2 8 //inside
 #define DHTTYPE DHT11
 
-#define PIN 10
-#define PIN_living 11
+#define PIN 5
+#define PIN_living 6
 #define PIN_escape 9
-#define STRIPSIZE 4
-#define STRIPSIZEESCAPE 4
+#define STRIPSIZE 10
+#define STRIPSIZELIV 64
+#define STRIPSIZEESCAPE 24
 
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(STRIPSIZE, PIN, NEO_GRB + NEO_KHZ800);
-Adafruit_NeoPixel strip_living = Adafruit_NeoPixel(STRIPSIZE, PIN_living, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel strip_living = Adafruit_NeoPixel(STRIPSIZELIV, PIN_living, NEO_GRB + NEO_KHZ800);
 Adafruit_NeoPixel strip_escape = Adafruit_NeoPixel(STRIPSIZEESCAPE, PIN_escape, NEO_GRB + NEO_KHZ800);
 
 DHT dht1(DHTPIN1, DHTTYPE);
 DHT dht2(DHTPIN2, DHTTYPE);
+
+SoftwareSerial linkit7688(10,11);
 
 int led_color[3] = {255, 255, 255};
 const int pinLight = A0;
@@ -48,7 +54,11 @@ void setup() {
 
   Serial.begin(9600);
   Serial1.begin(57600);
+  linkit7688.begin(9600);
 
+  delay(5);
+  Serial1.println("R");
+  
   //////init led///////
 
   strip.begin();
@@ -66,7 +76,7 @@ void setup() {
   dht1.begin();
   dht2.begin();
 
-  FlexiTimer2::set(1000, flash);
+  FlexiTimer2::set(5000, flash);
   FlexiTimer2::start();
 }
 
@@ -74,20 +84,21 @@ void loop() {
 
   String read_meg = "";
 
-  if (Serial.available() || danger)
+  if (linkit7688.available() || danger) 
   {
-    while (Serial.available())
+    while (linkit7688.available())
     {
-      read_meg = read_meg + char(Serial.read());
+      read_meg = read_meg + char(linkit7688.read());
       Serial.println(read_meg);
     }
-    if (read_meg.equals("ES") || read_meg.equals("FS"))
+    if (read_meg.equals("S"))
     {
       Serial.println("Safe!");
       Safe();
       danger = false;
       Serial1.println("S");
       colorWipe_escape(strip_escape.Color(0, 0, 0), 0);
+      colorWipe(strip.Color(0, 0, 0), 0);
       FlexiTimer2::start();
     }
     else if (read_meg.equals("E") || read_meg.equals("F") || danger )
@@ -98,6 +109,7 @@ void loop() {
       AllStop();
       colorWipe_escape(strip_escape.Color(255, 255, 255), 200);
       colorWipe_escape(strip_escape.Color(0, 0, 0), 200);
+      colorWipe(strip.Color(255, 255, 255), 0);
       FlexiTimer2::stop();
     }
 
@@ -124,7 +136,7 @@ void loop() {
         Serial.println("manual");
       }
       ///////////////room light////////////////////
-
+/*
       if (read_meg.equals("ro"))
       {
         Serial.println("room light on!");
@@ -138,7 +150,7 @@ void loop() {
         colorWipe(strip.Color(0, 0, 0), 0);
         roomlight = false;
       }
-
+*/
       ///////////////living room/////////////////
 
       if (read_meg.equals("lo"))
