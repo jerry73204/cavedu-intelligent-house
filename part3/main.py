@@ -27,7 +27,7 @@ DOOR_OPEN_TIMESPAN = 5
 
 # global variables
 PREV_DOOR_OPEN = False
-PREV_DOOR_CLOSED = False
+PREV_DOOR_CLOSED = True
 PREV_VALUE_EMERGENCY = False
 PREV_VALUE_TRAIN_FACE = False
 PREV_VALUE_RECOGNIZE_FACE = False
@@ -210,9 +210,19 @@ def main():
     global STATE
     global PREV_STATE_1
     global PREV_STATE_2
+    global PREV_DOOR_OPEN
+    global PREV_DOOR_CLOSED
 
     # initialize
-    STATE = PREV_STATE_1 = PREV_STATE_2 = constants.STATE_OPEN if is_door_open() else constants.STATE_CLOSED
+    if is_door_open():
+        STATE = PREV_STATE_1 = PREV_STATE_2 = constants.STATE_OPEN
+        PREV_DOOR_OPEN = True
+        PREV_DOOR_CLOSED = False
+
+    else:
+        STATE = PREV_STATE_1 = PREV_STATE_2 = constants.STATE_CLOSED
+        PREV_DOOR_OPEN = False
+        PREV_DOOR_CLOSED = True
 
     # monitor the events by polling
     while True:
