@@ -14,12 +14,22 @@ console.log('Start Program!');
 
 serialPort.on("open", function () {
         receivedData ="";
+        var sensor = new Array(3);
         serialPort.on('data',function(data)
         {
                 receivedData =data.toString();
                 console.log(receivedData);
 
-
+		if(receivedData.indexOf('R')>=0 ){
+                        myApp.emit('auto','',1);
+                        myApp.emit('room','',0);
+                        myApp.emit('Inside_degree','',0);
+                        myApp.emit('outside_degree','',0);
+                        myApp.emit('blackout','',0);
+                        myApp.emit('living_color','',16777215);
+                        myApp.emit('livingroom','',0);
+                        myApp.emit('disaster','',0);
+                }
                 if(receivedData.indexOf('S')>=0 ){
                         myApp.emit('disaster','', 0);
                         console.log('Safe!');
@@ -85,5 +95,3 @@ myApp.on('living_color',function(data,time){
         console.log('change color!');
 
 });
-
-
