@@ -10,12 +10,11 @@ import concurrent.futures
 import RPi.GPIO as GPIO
 
 import config
-import rfid
+import constants
+# import rfid
+import gui
 import face_auth
 import mediatek_cloud
-
-# flag indicating if any signal is received
-SHUTDOWN_FLAG = False
 
 # the delay time (ms) after each loop
 LOOP_DELAY = 0.05
@@ -25,12 +24,6 @@ OUTPUT_PIN_TIMESPAN = 0.03
 
 # do not send warning message for the timespan after the door is opened
 DOOR_OPEN_TIMESPAN = 5
-
-# state constants
-STATE_OPEN      = 0
-STATE_CLOSED    = 1
-STATE_INVADED   = 2
-STATE_EMERGENCY = 3
 
 # global variables
 PREV_DOOR_OPEN = False
@@ -43,9 +36,11 @@ PREV_STATE_2 = None
 
 STATE_CHANGE_TIME = 0
 
-STATE = STATE_CLOSED
+STATE = constants.STATE_CLOSED
 
 FACE_AUTH_SERVICE = None
+
+GUI_SERVICE = None
 
 FUTURE_RECOGNIZE_FACE = None
 
@@ -73,7 +68,8 @@ def is_door_closing():
 def is_authenticated():
     global FUTURE_RECOGNIZE_FACE
 
-    result = rfid.read_tag() is not None
+    # result = rfid.read_tag() is not None
+    result = False
 
     if FUTURE_RECOGNIZE_FACE is not None and FUTURE_RECOGNIZE_FACE.done():
         result |= FUTURE_RECOGNIZE_FACE.result()
@@ -89,24 +85,10 @@ def is_signaled_emergency():
     return result
 
 def is_signaled_train_face():
-    # TODO implementation
-    global PREV_VALUE_TRAIN_FACE
-    print('signal train face? ', end='')
-    sys.stdout.flush()
-    value = sys.stdin.readline() != '0\n'
-    result = (PREV_VALUE_TRAIN_FACE ^ value) & value
-    PREV_VALUE_TRAIN_FACE = value
-    return result
+    return GUI_SERVICE.is_signaled_train_face()
 
 def is_signaled_recognize_face():
-    # TODO implementation
-    global PREV_VALUE_RECOGNIZE_FACE
-    print('signal recognize face? ', end='')
-    sys.stdout.flush()
-    value = sys.stdin.readline() != '0\n'
-    result = (PREV_VALUE_RECOGNIZE_FACE ^ value) & value
-    PREV_VALUE_RECOGNIZE_FACE = value
-    return result
+    return GUI_SERVICE.is_signaled_recognize_face()
 
 def is_state_changed():
     global PREV_STATE_1
@@ -171,53 +153,54 @@ def on_auth():
     logging.debug('event auth')
     global STATE
 
-    if STATE == STATE_OPEN:     # ignore this case
+    if STATE == constants.STATE_OPEN:     # ignore this case
         return
 
-    elif STATE in (STATE_CLOSED, STATE_INVADED, STATE_EMERGENCY): # reset to door open state
+    elif STATE in (constants.STATE_CLOSED, constants.STATE_INVADED, constants.STATE_EMERGENCY): # reset to door open state
         action_open_door()
         mediatek_cloud.set_house_status('DOOR OPEN')
-        STATE = STATE_OPEN
+        STATE = constants.STATE_OPEN
 
 def on_housebreaking():
     global STATE
-    if STATE != STATE_INVADED:
+    if STATE != constants.STATE_INVADED:
         logging.debug('event housebreaking')
-        STATE = STATE_INVADED
+        STATE = constants.STATE_INVADED
         mediatek_cloud.set_house_status('INVADED')
         action_signal_housebreak()
 
 def on_emergency():
     global STATE
-    if STATE != STATE_EMERGENCY:
+    if STATE != constants.STATE_EMERGENCY:
         logging.debug('event emergency')
         mediatek_cloud.set_house_status('EMERGENCY')
-        STATE = STATE_EMERGENCY
+        STATE = constants.STATE_EMERGENCY
 
 def on_door_opening():
     logging.debug('event door_opening')
 
-    if STATE == STATE_CLOSED:
+    if STATE == constants.STATE_CLOSED:
         on_housebreaking()
 
 def on_door_closing():
     global STATE
     logging.debug('event door_closing')
 
-    if STATE == STATE_CLOSED:
+    if STATE == constants.STATE_CLOSED:
         logging.warning('event door_closing is triggered in CLOSED state')
 
-    elif STATE == STATE_OPEN:
+    elif STATE == constants.STATE_OPEN:
         mediatek_cloud.set_house_status('DOOR CLOSED')
-        STATE = STATE_CLOSED
+        STATE = constants.STATE_CLOSED
 
 def on_state_changed():
     global STATE
     global STATE_CHANGE_TIME
 
     STATE_CHANGE_TIME = time.time()
+    GUI_SERVICE.set_house_state(STATE)
 
-    if STATE == STATE_OPEN:
+    if STATE == constants.STATE_OPEN:
         action_check_door_open_overtime(STATE_CHANGE_TIME)
 
 def on_state_unchanged():
@@ -229,11 +212,13 @@ def main():
     global PREV_STATE_2
 
     # initialize
-    STATE = PREV_STATE_1 = PREV_STATE_2 = STATE_OPEN if is_door_open() else STATE_CLOSED
+    STATE = PREV_STATE_1 = PREV_STATE_2 = constants.STATE_OPEN if is_door_open() else constants.STATE_CLOSED
 
     # monitor the events by polling
     while True:
-        if SHUTDOWN_FLAG:
+        if constants.SHUTDOWN_FLAG:
+            GUI_SERVICE.stop()
+            FACE_AUTH_SERVICE.stop()
             logging.info('Shutting down...')
             exit()
 
@@ -241,19 +226,19 @@ def main():
         if is_signaled_emergency():
             on_emergency()
 
-        elif is_signaled_train_face():
+        if is_signaled_train_face():
             action_train_face()
 
-        elif is_signaled_recognize_face():
+        if is_signaled_recognize_face():
             action_recognize_face()
 
-        elif is_authenticated():
+        if is_authenticated():
             on_auth()
 
-        elif is_door_opening():
+        if is_door_opening():
             on_door_opening()
 
-        elif is_door_closing():
+        if is_door_closing():
             on_door_closing()
 
 
@@ -266,10 +251,7 @@ def main():
         time.sleep(LOOP_DELAY)
 
 def signal_handler(signum, frame):
-    global SHUTDOWN_FLAG
-    global FACE_AUTH_SERVICE
-    FACE_AUTH_SERVICE.stop()
-    SHUTDOWN_FLAG = True
+    constants.SHUTDOWN_FLAG = True
 
 if __name__ == '__main__':
     # setup logger and signal handlers
@@ -288,8 +270,12 @@ if __name__ == '__main__':
     GPIO.output(config.PIN_OUT_INVADED, 0)
     GPIO.output(config.PIN_OUT_TIMEOUT, 0)
 
+    # setup gui service
+    GUI_SERVICE = gui.GuiServie()
+    GUI_SERVICE.start()
+
     # setup face authentication service
-    FACE_AUTH_SERVICE = face_auth.FaceAuthServie(config.FACES_DATABASE_PATH)
+    FACE_AUTH_SERVICE = face_auth.FaceAuthServie(config.FACES_DATABASE_PATH, GUI_SERVICE)
     FACE_AUTH_SERVICE.start()
 
     # run the main procedure
