@@ -19,7 +19,8 @@ class GuiServie:
 
     def get_camera_tk_image(self):
         if self.camera_image is not None:
-            return ImageTk.PhotoImage(image=Image.fromarray(cv2.cvtColor(self.camera_image, cv2.COLOR_BGR2RGBA)))
+            resized_image = cv2.resize(self.camera_image, (config.WEBCAM_IMAGE_WIDTH, config.WEBCAM_IMAGE_HEIGHT), interpolation=cv2.INTER_LANCZOS4)
+            return ImageTk.PhotoImage(image=Image.fromarray(cv2.cvtColor(resized_image, cv2.COLOR_BGR2RGBA)))
         else:
             return None
 
