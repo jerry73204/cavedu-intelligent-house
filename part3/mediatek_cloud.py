@@ -1,9 +1,9 @@
-import http.client
+import httplib
 import json
 import config
 
 def send_data_point(dev_id, dev_key, data_id, data_value):
-    http_client = http.client.HTTPConnection('api.mediatek.com')
+    http_client = httplib.HTTPConnection('api.mediatek.com')
 
     url = '/mcs/v2/devices/%s/datapoints.csv' % dev_id
     headers = {'deviceKey': dev_key}
@@ -11,7 +11,7 @@ def send_data_point(dev_id, dev_key, data_id, data_value):
     http_client.request('POST', url, body=body, headers=headers)
 
 def receive_data_point(dev_id, dev_key, data_id):
-    http_client = http.client.HTTPConnection('api.mediatek.com')
+    http_client = httplib.HTTPConnection('api.mediatek.com')
 
     url = '/mcs/v2/devices/%s/datachannels/%s/datapoints' % (dev_id, data_id)
     headers = {'deviceKey': dev_key}

@@ -1,10 +1,9 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python2
 # -*- coding: utf-8 -*-
-import sys
 import time
 import logging
 import signal
-import asyncio
+import threading
 
 import RPi.GPIO as GPIO
 
@@ -43,7 +42,9 @@ GUI_SERVICE = None
 
 # utility functions
 def run_in_background(func):
-    asyncio.get_event_loop().run_in_executor(None, func)
+    thread = threading.Thread(target=func)
+    thread.start()
+    # asyncio.get_event_loop().run_in_executor(None, func)
 
 def is_door_open():
     return GPIO.input(config.PIN_IN_MAGNET_SWITCH) == 0

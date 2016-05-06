@@ -1,4 +1,5 @@
-import tkinter
+# -*- coding: utf-8 -*-
+import Tkinter as tk
 from PIL import Image, ImageTk
 from threading import Thread
 
@@ -40,13 +41,13 @@ class GuiServie:
         self.state = state
 
     def worker(self):
-        tk_root = tkinter.Tk()
+        tk_root = tk.Tk()
         tk_root.bind('<Escape>', lambda e: tk_root.quit())
 
-        tk_label_status = tkinter.Label(tk_root, text='待機')
+        tk_label_status = tk.Label(tk_root, text='待機')
         tk_label_status.pack()
 
-        tk_label_image = tkinter.Label(tk_root)
+        tk_label_image = tk.Label(tk_root)
         tk_label_image.pack()
 
         def command_train_face():
@@ -55,11 +56,11 @@ class GuiServie:
         def command_recognize_face():
             self.signal_recognize_face=True
 
-        button_train_face = tkinter.Button(tk_root, text='記下特徵', command=command_train_face)
-        button_train_face.pack(side=tkinter.LEFT)
+        button_train_face = tk.Button(tk_root, text='記下特徵', command=command_train_face)
+        button_train_face.pack(side=tk.LEFT)
 
-        button_recognize_face = tkinter.Button(tk_root, text='認證', command=command_recognize_face)
-        button_recognize_face.pack(side=tkinter.LEFT)
+        button_recognize_face = tk.Button(tk_root, text='認證', command=command_recognize_face)
+        button_recognize_face.pack(side=tk.LEFT)
 
         def refresh():
             if self.flag_shutdown:
