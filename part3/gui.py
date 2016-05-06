@@ -65,6 +65,7 @@ class GuiServie:
 
         def refresh():
             if self.flag_shutdown:
+                tk_root.quit()
                 return
 
             if self.state == constants.STATE_OPEN:

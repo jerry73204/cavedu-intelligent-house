@@ -36,8 +36,8 @@ STATE_CHANGE_TIME = 0
 
 STATE = constants.STATE_CLOSED
 
+RFID_SERVICE = None
 FACE_AUTH_SERVICE = None
-
 GUI_SERVICE = None
 
 # utility functions
@@ -204,6 +204,7 @@ def main():
     # monitor the events by polling
     while True:
         if constants.SHUTDOWN_FLAG:
+            RFID_SERVICE.stop()
             GUI_SERVICE.stop()
             FACE_AUTH_SERVICE.stop()
             logging.info('Shutting down...')
@@ -256,6 +257,10 @@ if __name__ == '__main__':
 
     GPIO.output(config.PIN_OUT_INVADED, 0)
     GPIO.output(config.PIN_OUT_TIMEOUT, 0)
+
+    # setup RFID service
+    RFID_SERVICE = rfid.RfidService()
+    RFID_SERVICE.start()
 
     # setup gui service
     GUI_SERVICE = gui.GuiServie()
