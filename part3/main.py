@@ -64,7 +64,7 @@ def is_door_closing():
     return result
 
 def is_authenticated():
-    return rfid.read_tag() is not None or FACE_AUTH_SERVICE.is_auth_granted()
+    return RFID_SERVICE.is_tag_detected() or FACE_AUTH_SERVICE.is_auth_granted()
 
 def is_signaled_emergency():
     global PREV_VALUE_EMERGENCY
