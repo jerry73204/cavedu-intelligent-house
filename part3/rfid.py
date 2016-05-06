@@ -8,7 +8,7 @@ SERIAL_RFID = serial.Serial(
     parity=serial.PARITY_NONE,
     stopbits=serial.STOPBITS_ONE,
     bytesize=serial.EIGHTBITS,
-    timeout=10
+    timeout=0
 )
 
 def read_tag():

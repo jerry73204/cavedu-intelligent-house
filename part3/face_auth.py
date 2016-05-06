@@ -96,7 +96,7 @@ class FaceAuthServie:
 
         # train model
         labels = [POSITIVE_LABEL] * len(training_images) # create the label array
-        model = cv2.face.createEigenFaceRecognizer()
+        model = cv2.createEigenFaceRecognizer()
         model.train(numpy.asarray(training_images), numpy.asarray(labels))
 
         # obtain the result
@@ -115,7 +115,7 @@ class FaceAuthServie:
                 tmp_file.file.write(description)
                 tmp_file.flush()
 
-                model = cv2.face.createEigenFaceRecognizer()
+                model = cv2.createEigenFaceRecognizer()
                 model.load(tmp_file.name)
                 trained_models.append(model)
 
@@ -147,11 +147,7 @@ class FaceAuthServie:
             cropped_image = resize_image(crop_image(gray_image, x, y, w, h))
 
             for model in trained_models:
-                # label, confidence = model.predict(cropped_image)
-                predict_collector = cv2.face.MinDistancePredictCollector()
-                model.predict(cropped_image, predict_collector)
-                label, confidence = predict_collector.getLabel(), predict_collector.getDist()
-
+                label, confidence = model.predict(cropped_image)
                 if label == POSITIVE_LABEL and confidence < config.CONFIDENCE_THRESHOLD:
                     return True
 
