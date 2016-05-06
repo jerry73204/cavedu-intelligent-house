@@ -44,7 +44,7 @@ class FaceAuthServie:
         self.flag_train_request = False
         self.flag_recognition_request = False
         self.is_busy = False
-        self.future_recognize_result = None
+        self.flag_auth_granted = False
         self.camera = cv2.VideoCapture(0)
 
         self.face_models_path = face_models_path
@@ -181,7 +181,7 @@ class FaceAuthServie:
                 self.gui_service.flag_recognize_face = True
 
                 result = self.recognize_face(self.model_descriptions)
-                self.future_recognize_result.set_result(result)
+                self.flag_auth_granted = result
 
                 self.flag_recognition_request = False
                 self.gui_service.flag_recognize_face = False
@@ -200,17 +200,22 @@ class FaceAuthServie:
         self.flag_shutdown = True
         self.auth_thread.join()
 
-    def schedule_train_face(self):
+    def signal_train_face(self):
         if not self.is_busy:
             self.flag_train_request = True
             return True
         else:
             return False
 
-    def schedule_recognize_face(self, future):
+    def signal_recognize_face(self):
         if not self.is_busy:
-            self.future_recognize_result = future
             self.flag_recognition_request = True
             return True
         else:
             return False
+
+    def is_auth_granted(self):
+        result = self.flag_auth_granted
+        if result:
+            self.flag_auth_granted = False
+        return result

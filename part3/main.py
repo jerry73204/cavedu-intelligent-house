@@ -5,13 +5,12 @@ import time
 import logging
 import signal
 import asyncio
-import concurrent.futures
 
 import RPi.GPIO as GPIO
 
 import config
 import constants
-# import rfid
+import rfid
 import gui
 import face_auth
 import mediatek_cloud
@@ -42,8 +41,6 @@ FACE_AUTH_SERVICE = None
 
 GUI_SERVICE = None
 
-FUTURE_RECOGNIZE_FACE = None
-
 # utility functions
 def run_in_background(func):
     asyncio.get_event_loop().run_in_executor(None, func)
@@ -66,16 +63,7 @@ def is_door_closing():
     return result
 
 def is_authenticated():
-    global FUTURE_RECOGNIZE_FACE
-
-    # result = rfid.read_tag() is not None
-    result = False
-
-    if FUTURE_RECOGNIZE_FACE is not None and FUTURE_RECOGNIZE_FACE.done():
-        result |= FUTURE_RECOGNIZE_FACE.result()
-        FUTURE_RECOGNIZE_FACE = None
-
-    return result
+    return rfid.read_tag() is not None or FACE_AUTH_SERVICE.is_auth_granted()
 
 def is_signaled_emergency():
     global PREV_VALUE_EMERGENCY
@@ -131,22 +119,10 @@ def action_check_door_open_overtime(expected_state_change_time):
     run_in_background(routine)
 
 def action_train_face():
-    if not FACE_AUTH_SERVICE.schedule_train_face():
-        logging.warning('face auth serive is busy')
+    FACE_AUTH_SERVICE.signal_train_face()
 
 def action_recognize_face():
-    global FUTURE_RECOGNIZE_FACE
-
-    if FUTURE_RECOGNIZE_FACE is None:
-        future = concurrent.futures.Future()
-
-        if FACE_AUTH_SERVICE.schedule_recognize_face(future):
-            FUTURE_RECOGNIZE_FACE = future
-        else:
-            logging.warning('face auth serive is busy')
-
-    else:
-        logging.warning('previous face recognition task is not finished yet')
+    FACE_AUTH_SERVICE.signal_recognize_face()
 
 # event handlers
 def on_auth():
