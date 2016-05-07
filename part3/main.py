@@ -15,7 +15,7 @@ import face_auth
 import mediatek_cloud
 
 # the delay time (ms) after each loop
-LOOP_DELAY = 0.05
+LOOP_DELAY = 0.001
 
 # the timespan that the GPIO pin is set to 1
 OUTPUT_PIN_TIMESPAN = 0.03
@@ -99,18 +99,22 @@ def action_open_door():
     run_in_background(routine)
 
 def action_signal_housebreak():
-    def routine():
-        GPIO.output(config.PIN_OUT_INVADED, 1)
-        time.sleep(0.5)
-        GPIO.output(config.PIN_OUT_INVADED, 0)
-    run_in_background(routine)
+    GPIO.output(config.PIN_OUT_INVADED, 1)
+    # def routine():
+    #     GPIO.output(config.PIN_OUT_INVADED, 1)
+    #     time.sleep(0.5)
+    #     GPIO.output(config.PIN_OUT_INVADED, 0)
+    # run_in_background(routine)
 
 def action_signal_door_not_closed():
-    def routine():
-        GPIO.output(config.PIN_OUT_TIMEOUT, 1)
-        time.sleep(0.5)
-        GPIO.output(config.PIN_OUT_TIMEOUT, 0)
-    run_in_background(routine)
+    logging.debug('signal door not closed')
+    GPIO.output(config.PIN_OUT_TIMEOUT, 1)
+    # def routine():
+    #     logging.debug('signal door not closed')
+    #     GPIO.output(config.PIN_OUT_TIMEOUT, 1)
+    #     time.sleep(0.5)
+    #     GPIO.output(config.PIN_OUT_TIMEOUT, 0)
+    # run_in_background(routine)
 
 def action_check_door_open_overtime(expected_state_change_time):
     def routine():
@@ -134,6 +138,7 @@ def on_auth():
         return
 
     elif STATE in (constants.STATE_CLOSED, constants.STATE_INVADED, constants.STATE_EMERGENCY): # reset to door open state
+        GPIO.output(config.PIN_OUT_INVADED, 0)
         action_open_door()
         mediatek_cloud.set_house_status('DOOR OPEN')
         STATE = constants.STATE_OPEN
@@ -163,6 +168,8 @@ def on_door_closing():
     global STATE
     logging.debug('event door_closing')
 
+    GPIO.output(config.PIN_OUT_TIMEOUT, 0)
+
     if STATE == constants.STATE_CLOSED:
         logging.warning('event door_closing is triggered in CLOSED state')
 
@@ -173,8 +180,9 @@ def on_door_closing():
 def on_state_changed():
     global STATE
     global STATE_CHANGE_TIME
+    logging.debug('event state_change')
 
-    STATE_CHANGE_TIME = time.time()
+    STATE_CHANGE_TIME += 1
     GUI_SERVICE.set_house_state(STATE)
 
     if STATE == constants.STATE_OPEN:
