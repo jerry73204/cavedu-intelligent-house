@@ -1,16 +1,26 @@
-int pin_buzz = 2;
-int pin_light = 13;
+int pin_buzz = 3;
+int pin_gas = 0;
+int pin_fire = 1;
+int pin_earthquake = 2;
 
-void buzz(boolean power){
+void warning_setup(){
   pinMode(pin_buzz,OUTPUT);
+  pinMode(pin_gas,OUTPUT);
+  pinMode(pin_fire,OUTPUT);
+  pinMode(pin_earthquake,OUTPUT);
+}
+void buzz(boolean power){
   digitalWrite(pin_buzz,power);
 }
 
-void warring_light(boolean power){
-  pinMode(pin_light,OUTPUT);
-  digitalWrite(pin_light,power);
+void warring_fire(boolean power){
+  digitalWrite(pin_fire,power);
 }
 
-void LCD(String text){
+void warring_gas(boolean power){
+  digitalWrite(pin_gas,power);
+}
 
+void warring_earthquake(boolean power){
+  digitalWrite(pin_earthquake,power);
 }

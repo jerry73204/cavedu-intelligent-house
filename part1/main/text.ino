@@ -1,14 +1,14 @@
 #include <SoftwareSerial.h>
 int pi1 = 10; //is invansion
 int pi2 = 11; //door not closed
-int pi3 = 12;
+int pi3 = 12; //send
 SoftwareSerial linkit7688(8,9);
 SoftwareSerial linkitone(6,7);
 
 void serial_setup(){
-  pinMode(pi1,OUTPUT);
+  pinMode(pi1,INPUT);
   pinMode(pi2,INPUT);
-  pinMode(pi3,INPUT);
+  pinMode(pi3,OUTPUT);
   linkit7688.begin(9600);
   linkitone.begin(9600);
 }
@@ -26,26 +26,36 @@ void sendText(int object, char msg){
   else if(object == 3){
     if(msg  == 'F' || msg  == 'E'){
       digitalWrite(pi3,HIGH);
+      Serial.println("J");
     }
-    if(msg  = 'S'){
+    if(msg  == 'S'){
       digitalWrite(pi3,LOW);
+      Serial.println("J");
     }
   }
 }
 
+int pIn = 0;
+int pDo = 0;
+
 char readText(){
-  if(digitalRead(pi1)){
-    return 'I';
+  int curIn = digitalRead(pi1);
+  int curDo = digitalRead(pi2);
+  char result;
+  if((curIn - pIn) == 1){
+    result = 'I';
   }
-  else if(digitalRead(pi2)){
-    return 'D';
+  else if((curDo - pDo) == 1){
+    result = 'D';
   }
-
+  
   else if(Serial.available()){
-    return Serial.read();
+    result =  Serial.read();
   }
-
   else{
-    return 'S';
+    result = 'S';
   }
+  pIn = curIn;
+  pDo = curDo;
+  return result;
 }
