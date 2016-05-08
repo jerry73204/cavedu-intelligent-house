@@ -5,7 +5,7 @@ int pinF = 6;
 int pinG = 7;
 
 void setup() {
-  
+
 //  Serial.begin(9600);
   Serial1.begin(9600);
 //  Serial.println("Starting SMS!");
@@ -13,7 +13,7 @@ void setup() {
   pinMode(pinE,OUTPUT);
   pinMode(pinF,OUTPUT);
   pinMode(pinG,OUTPUT);
-  
+
   while (!LSMS.ready()){
     delay(1000);
 //    Serial.println("Waiting for SMS");
@@ -46,7 +46,7 @@ void loop() {
       else if(c == 'I'){
         message  = "someone enter into the house";
       }
-    
+
       LSMS.print(message);
       LSMS.endSMS();
     }
