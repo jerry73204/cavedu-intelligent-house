@@ -1,6 +1,6 @@
 void led_color_value(String led_value) {
-//  Serial.print("value: ");
-//  Serial.println(led_value);
+  //  Serial.print("value: ");
+  //  Serial.println(led_value);
   led_value.remove(0, 1);
 
   led_value = String(led_value.toInt(), HEX);
@@ -35,10 +35,10 @@ void led_color_value(String led_value) {
     led_color[i] = StringToNum(led_value[i * 2], led_value[i * 2 + 1]);
   }
   /*for (int i = 0; i < 3; i++)
-  {
+    {
     Serial.println(led_color[i]);
-  }
-*/
+    }
+  */
 }
 
 int StringToNum(char a, char b)
