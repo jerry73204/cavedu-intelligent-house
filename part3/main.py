@@ -100,21 +100,10 @@ def action_open_door():
 
 def action_signal_housebreak():
     GPIO.output(config.PIN_OUT_INVADED, 1)
-    # def routine():
-    #     GPIO.output(config.PIN_OUT_INVADED, 1)
-    #     time.sleep(0.5)
-    #     GPIO.output(config.PIN_OUT_INVADED, 0)
-    # run_in_background(routine)
 
 def action_signal_door_not_closed():
     logging.debug('signal door not closed')
     GPIO.output(config.PIN_OUT_TIMEOUT, 1)
-    # def routine():
-    #     logging.debug('signal door not closed')
-    #     GPIO.output(config.PIN_OUT_TIMEOUT, 1)
-    #     time.sleep(0.5)
-    #     GPIO.output(config.PIN_OUT_TIMEOUT, 0)
-    # run_in_background(routine)
 
 def action_check_door_open_overtime(expected_state_change_time):
     def routine():
