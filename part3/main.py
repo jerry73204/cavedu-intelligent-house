@@ -93,9 +93,9 @@ def is_state_unchanged():
 
 def action_open_door():
     def routine():
-        GPIO.output(config.PIN_OUT_LOCK, 1)
-        time.sleep(0.5)
         GPIO.output(config.PIN_OUT_LOCK, 0)
+        time.sleep(0.5)
+        GPIO.output(config.PIN_OUT_LOCK, 1)
     run_in_background(routine)
 
 def action_signal_housebreak():
@@ -135,7 +135,7 @@ def on_auth():
     global STATE
 
     if STATE == constants.STATE_OPEN:     # ignore this case
-        return
+        action_open_door()
 
     elif STATE in (constants.STATE_CLOSED, constants.STATE_INVADED, constants.STATE_EMERGENCY): # reset to door open state
         GPIO.output(config.PIN_OUT_INVADED, 0)
@@ -265,6 +265,7 @@ if __name__ == '__main__':
 
     GPIO.output(config.PIN_OUT_INVADED, 0)
     GPIO.output(config.PIN_OUT_TIMEOUT, 0)
+    GPIO.output(config.PIN_OUT_LOCK, 1)
 
     # setup RFID service
     RFID_SERVICE = rfid.RfidService()
