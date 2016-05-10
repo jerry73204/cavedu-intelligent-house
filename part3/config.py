@@ -6,7 +6,7 @@ PIN_IN_EMERGENCY     = 16
 PIN_IN_MAGNET_SWITCH = 22
 
 # serial
-SERIAL_DEVICE_PATH   = '/dev/ttyS0'
+SERIAL_DEVICE_PATH   = '/dev/ttyAMA0'
 SERIAL_BAUDRATE = 9600
 
 # MediaTek cloud
