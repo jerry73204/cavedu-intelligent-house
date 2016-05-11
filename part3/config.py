@@ -11,8 +11,8 @@ SERIAL_DEVICE_PATH   = '/dev/ttyAMA0'
 SERIAL_BAUDRATE = 9600
 
 # MediaTek cloud
-DEVICE_ID = 'DzBGkc0A'
-DEVICE_KEY = 'fCjvVayRCGIrPkr6'
+DEVICE_ID = 'DGDfnSwk'
+DEVICE_KEY = 'SHKVwfd9mma1YisF'
 CHANNEL_STATUS_ID = 'house_status'
 
 # GUI
