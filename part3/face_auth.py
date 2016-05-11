@@ -46,6 +46,7 @@ class FaceAuthServie:
         self.is_busy = False
         self.flag_auth_granted = False
         self.camera = cv2.VideoCapture(0)
+        self.flag_require_light_on = False
 
         self.face_models_path = face_models_path
 
@@ -61,6 +62,7 @@ class FaceAuthServie:
         image_count = 0
         time_limit = time.time() + config.TRAINING_TASK_TIMEOUT
         training_images = list()
+        self.flag_require_light_on = True
 
         # start training task
         while image_count < config.NUM_SAMPLED_TRAINING_IMAGES and time.time() < time_limit:
@@ -90,6 +92,9 @@ class FaceAuthServie:
 
             image_count += 1
 
+
+        self.flag_require_light_on = False
+
         # return None if timeout
         if image_count == 0:
             return None
@@ -109,6 +114,7 @@ class FaceAuthServie:
     def recognize_face(self, model_descriptions):
         # create face recognizers
         trained_models = list()
+        self.flag_require_light_on = True
 
         for description in model_descriptions:
             with tempfile.NamedTemporaryFile() as tmp_file:
@@ -149,8 +155,10 @@ class FaceAuthServie:
             for model in trained_models:
                 label, confidence = model.predict(cropped_image)
                 if label == POSITIVE_LABEL and confidence < config.CONFIDENCE_THRESHOLD:
+                    self.flag_require_light_on = False
                     return True
 
+        self.flag_require_light_on = False
         return False
 
     def worker(self):

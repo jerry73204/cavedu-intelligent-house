@@ -112,6 +112,9 @@ def action_check_door_open_overtime(expected_state_change_time):
             action_signal_door_not_closed()
     run_in_background(routine)
 
+def actoin_set_light(light_on):
+    GPIO.output(config.PIN_OUT_LIGHT, 1 if light_on else 0)
+
 def action_train_face():
     FACE_AUTH_SERVICE.signal_train_face()
 
@@ -208,6 +211,8 @@ def main():
             exit()
 
         # check events
+        actoin_set_light(FACE_AUTH_SERVICE.flag_require_light_on)
+
         if is_signaled_emergency():
             on_emergency()
 
@@ -249,12 +254,14 @@ if __name__ == '__main__':
     GPIO.setup(config.PIN_OUT_INVADED, GPIO.OUT)
     GPIO.setup(config.PIN_OUT_TIMEOUT, GPIO.OUT)
     GPIO.setup(config.PIN_OUT_LOCK, GPIO.OUT)
+    GPIO.setup(config.PIN_OUT_LIGHT, GPIO.OUT)
     GPIO.setup(config.PIN_IN_EMERGENCY, GPIO.IN)
     GPIO.setup(config.PIN_IN_MAGNET_SWITCH, GPIO.IN)
 
     GPIO.output(config.PIN_OUT_INVADED, 0)
     GPIO.output(config.PIN_OUT_TIMEOUT, 0)
     GPIO.output(config.PIN_OUT_LOCK, 1)
+    GPIO.output(config.PIN_OUT_LIGHT, 0)
 
     # setup RFID service
     RFID_SERVICE = rfid.RfidService()
