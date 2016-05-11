@@ -2,6 +2,7 @@
 #include <DHT.h>
 #include <FlexiTimer2.h>
 #include <SoftwareSerial.h>
+#include <Stepper.h>
 
 /////define pin/////
 
@@ -9,12 +10,15 @@
 #define DHTPIN2 8 //inside
 #define DHTTYPE DHT11
 
-#define PIN 5
+#define PIN 3
 #define PIN_living 6
 #define PIN_escape 9
 #define STRIPSIZE 10
 #define STRIPSIZELIV 64
 #define STRIPSIZEESCAPE 24
+#define STEPS 2048
+
+Stepper stepper(STEPS, 2, 5, 7, 12);
 
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(STRIPSIZE, PIN, NEO_GRB + NEO_KHZ800);
 Adafruit_NeoPixel strip_living = Adafruit_NeoPixel(STRIPSIZELIV, PIN_living, NEO_GRB + NEO_KHZ800);
@@ -23,7 +27,7 @@ Adafruit_NeoPixel strip_escape = Adafruit_NeoPixel(STRIPSIZEESCAPE, PIN_escape, 
 DHT dht1(DHTPIN1, DHTTYPE);
 DHT dht2(DHTPIN2, DHTTYPE);
 
-SoftwareSerial linkit7688(10,11);
+SoftwareSerial linkit7688(10, 11);
 
 int led_color[3] = {255, 255, 255};
 const int pinLight = A0;
@@ -31,6 +35,9 @@ boolean danger = false;
 String sensor_value[7] = {"l", "", "i", "", "p", "", "e"};
 int temp_1, temp_2;
 boolean livlight, roomlight;
+
+int current_step = 1;
+int unit_step = 10;
 
 void flash() {
 
@@ -58,7 +65,7 @@ void setup() {
 
   delay(5);
   Serial1.println("R");
-
+  stepper.setSpeed(5);
   //////init led///////
 
   strip.begin();
@@ -75,7 +82,8 @@ void setup() {
 
   dht1.begin();
   dht2.begin();
-
+  while (current_step != 0)
+    step_reset();
   FlexiTimer2::set(5000, flash);
   FlexiTimer2::start();
 }
@@ -86,6 +94,7 @@ void loop() {
 
   if (linkit7688.available() || danger)
   {
+
     while (linkit7688.available())
     {
       read_meg = read_meg + char(linkit7688.read());
@@ -107,9 +116,10 @@ void loop() {
       danger = true;
       Serial1.println("D");
       AllStop();
+      colorWipe(strip.Color(255, 255, 255), 0);
+      delay(50);
       colorWipe_escape(strip_escape.Color(255, 255, 255), 200);
       colorWipe_escape(strip_escape.Color(0, 0, 0), 200);
-      colorWipe(strip.Color(255, 255, 255), 0);
       FlexiTimer2::stop();
     }
 
@@ -136,21 +146,21 @@ void loop() {
         Serial.println("manual");
       }
       ///////////////room light////////////////////
-/*
-      if (read_meg.equals("ro"))
-      {
-        Serial.println("room light on!");
-        colorWipe(strip.Color(255, 255, 255), 0);
-        roomlight = true;
-      }
+      /*
+            if (read_meg.equals("ro"))
+            {
+              Serial.println("room light on!");
+              colorWipe(strip.Color(255, 255, 255), 0);
+              roomlight = true;
+            }
 
-      else if (read_meg.equals("rc"))
-      {
-        Serial.println("room light off");
-        colorWipe(strip.Color(0, 0, 0), 0);
-        roomlight = false;
-      }
-*/
+            else if (read_meg.equals("rc"))
+            {
+              Serial.println("room light off");
+              colorWipe(strip.Color(0, 0, 0), 0);
+              roomlight = false;
+            }
+      */
       ///////////////living room/////////////////
 
       if (read_meg.equals("lo"))
@@ -182,7 +192,16 @@ void loop() {
 
     }//if (Serial1.available())
 
-  }
+    //////////////////Curtain///////////////
+
+    AutoCurtain();
+
+    ///////////manual living room light///////////
+   RoomBtn();
+    
+  }//if(!danger)
   temp_1 = TempSensor(4);
   temp_2 = TempSensor(8);
+
+
 }//loop
