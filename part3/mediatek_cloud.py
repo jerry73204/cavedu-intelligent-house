@@ -1,3 +1,5 @@
+import socket
+import logging
 import httplib
 import json
 import config
@@ -22,4 +24,8 @@ def receive_data_point(dev_id, dev_key, data_id):
     return result
 
 def set_house_status(status):
-    send_data_point(config.DEVICE_ID, config.DEVICE_KEY, config.CHANNEL_STATUS_ID, status)
+    try:
+        send_data_point(config.DEVICE_ID, config.DEVICE_KEY, config.CHANNEL_STATUS_ID, status)
+    except Exception:
+        logging.warning('cannot connect to MediaTek Cloud service')
+        return
