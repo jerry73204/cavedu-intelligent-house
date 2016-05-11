@@ -1,0 +1,12 @@
+[Unit]
+Description=Ping
+Wants=network.target network-online.target
+After=network.target network-online.target
+
+[Service]
+ExecStart=/usr/bin/ping wtf.csie.org
+Restart=on-failure
+RestartSec=30s
+
+[Install]
+WantedBy=multi-user.target
