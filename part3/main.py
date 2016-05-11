@@ -25,7 +25,7 @@ OUTPUT_PIN_TIMESPAN = 0.03
 DOOR_OPEN_TIMESPAN = 5
 
 # PID file path
-PID_FILE_PATH = '/var/run/cavedu_house.pid'
+PID_FILE_PATH = '/tmp/cavedu_house.pid'
 
 # global variables
 PREV_DOOR_OPEN = False
