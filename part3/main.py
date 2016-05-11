@@ -1,5 +1,6 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
+import os
 import time
 import logging
 import signal
@@ -22,6 +23,9 @@ OUTPUT_PIN_TIMESPAN = 0.03
 
 # do not send warning message for the timespan after the door is opened
 DOOR_OPEN_TIMESPAN = 5
+
+# PID file path
+PID_FILE_PATH = '/var/run/cavedu_house.pid'
 
 # global variables
 PREV_DOOR_OPEN = False
@@ -207,6 +211,12 @@ def main():
             RFID_SERVICE.stop()
             GUI_SERVICE.stop()
             FACE_AUTH_SERVICE.stop()
+
+            try:
+                os.remove(PID_FILE_PATH)
+            except OSError:
+                pass
+
             logging.info('Shutting down...')
             exit()
 
@@ -244,6 +254,29 @@ def signal_handler(signum, frame):
     constants.SHUTDOWN_FLAG = True
 
 if __name__ == '__main__':
+    # try to kill any other instances
+    if os.path.exists(PID_FILE_PATH):
+        with open(PID_FILE_PATH) as file_pid:
+            pid = int(file_pid.read())
+
+        try:
+            os.kill(pid, signal.SIGINT)
+
+            os.kill(pid, 0)
+            os.kill(pid, signal.SIGTERM)
+            time.sleep(1)
+
+            os.kill(pid, 0)
+            os.kill(pid, signal.SIGKILL)
+            time.sleep(1)
+
+        except OSError:
+            pass
+
+    # create PID file
+    with open(PID_FILE_PATH, 'w') as file_pid:
+        file_pid.write(str(os.getpid()))
+
     # setup logger and signal handlers
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
