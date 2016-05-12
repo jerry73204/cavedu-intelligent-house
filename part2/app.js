@@ -14,7 +14,7 @@ console.log('Start Program!');
 
 serialPort.on("open", function () {
         receivedData ="";
-        var sensor = new Array(3);
+        var sensor = new Array(4);
         serialPort.on('data',function(data)
         {
                 receivedData =data.toString();
@@ -38,17 +38,20 @@ serialPort.on("open", function () {
                         myApp.emit('disaster','', 1);
                         console.log('Danger!');
                 }
-                else if(receivedData.indexOf('l')>=0 && receivedData.indexOf('i')>=0 && receivedData.indexOf('p')>=0){
+                else if(receivedData.indexOf('l')>=0 && receivedData.indexOf('i')>=0 && receivedData.indexOf('p')>=0 && receivedData.indexOf('s')>=0){
                         sensor[0] = receivedData.substring(receivedData.indexOf('l')+1,receivedData.indexOf('i'));
                         sensor[1] = receivedData.substring(receivedData.indexOf('i')+1, receivedData.indexOf('p'));
-                        sensor[2] = receivedData.substring(receivedData.indexOf('p')+1, receivedData.indexOf('e'));
+                        sensor[2] = receivedData.substring(receivedData.indexOf('p')+1, receivedData.indexOf('s'));
+			sensor[3] = receivedData.substring(receivedData.indexOf('s')+1, receivedData.indexOf('e'));
                         console.log(sensor[0]);
                         console.log(sensor[1]);
                         console.log(sensor[2]);
+			console.log(sensor[3]);
 
                         myApp.emit('blackout','', sensor[0]);
                         myApp.emit('outside_degree','', sensor[1]);
                         myApp.emit('inside_degree','', sensor[2]);
+			myApp.emit('solar','',sensor[3]);
                 }
         });
 });
