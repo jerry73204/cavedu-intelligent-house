@@ -43,10 +43,11 @@ class GuiServie:
 
     def worker(self):
         tk_root = tk.Tk()
+        tk_root.title('CAVEDU智慧屋')
         tk_root.bind('<Escape>', lambda e: tk_root.quit())
 
-        tk_label_status = tk.Label(tk_root, text='待機')
-        tk_label_status.pack()
+        tk_label_status = tk.Label(tk_root, font=('', 12), text='')
+        tk_label_status.pack(fill='x')
 
         tk_label_image = tk.Label(tk_root)
         tk_label_image.pack()
@@ -57,10 +58,10 @@ class GuiServie:
         def command_recognize_face():
             self.signal_recognize_face=True
 
-        button_train_face = tk.Button(tk_root, text='記下特徵', command=command_train_face)
+        button_train_face = tk.Button(tk_root, text='記下特徵', font=('', 16), command=command_train_face)
         button_train_face.pack(side=tk.LEFT)
 
-        button_recognize_face = tk.Button(tk_root, text='認證', command=command_recognize_face)
+        button_recognize_face = tk.Button(tk_root, text='認證', font=('', 16), command=command_recognize_face)
         button_recognize_face.pack(side=tk.LEFT)
 
         def refresh():
@@ -69,16 +70,16 @@ class GuiServie:
                 return
 
             if self.state == constants.STATE_OPEN:
-                tk_label_status.config(text='待機')
+                tk_label_status.config(text='可進出', background='green yellow')
 
             elif self.state == constants.STATE_CLOSED:
-                tk_label_status.config(text='待機')
+                tk_label_status.config(text='禁止出入', background='yellow')
 
             elif self.state == constants.STATE_EMERGENCY:
-                tk_label_status.config(text='緊急狀態')
+                tk_label_status.config(text='緊急狀態', background='red')
 
             elif self.state == constants.STATE_INVADED:
-                tk_label_status.config(text='遭遇入侵')
+                tk_label_status.config(text='遭遇入侵', background='red')
 
             else:
                 assert False
