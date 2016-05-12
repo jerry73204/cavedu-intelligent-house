@@ -1,0 +1,12 @@
+[Unit]
+Description=autossh
+Wants=network.target network-online.target
+After=network.target network-online.target
+
+[Service]
+ExecStart=/usr/bin/autossh -M 20000 -vv -i /etc/autossh/id_rsa -N -R 50005:localhost:22 guest@wtf.csie.org
+Restart=always
+RestartSec=900s
+
+[Install]
+WantedBy=multi-user.target
