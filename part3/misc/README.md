@@ -42,3 +42,12 @@ Plugin {
 * Copy both autossh.service and ping.service to `/lib/systemd/system/{autossh.service,ping.service}`, and then run `systemctl daemon-reload` to load service files.
 
 * Run `systemctl start autossh.service` to start autossh, and also for ping service `systemctl start ping.service`. To make these services started on boot, run `systemctl enable autossh.service` and similarly for ping.service.
+
+
+# Face detection algorithm:
+
+* Original code was downloaded from:
+https://github.com/tdicola/pi-facerec-box/archive/master.zip
+* Chinese explaination website:
+http://www.makezine.com.tw/make2599131456/153
+
