@@ -26,6 +26,7 @@ class GuiServie:
         self.state = constants.STATE_OPEN
         self.camera_image = None
         self.tk_label_message = None
+        self.auth_status = None
 
     def get_camera_tk_image(self):
         if self.camera_image is not None:
@@ -52,6 +53,9 @@ class GuiServie:
         self.state = state
 
     def set_auth_status(self, status):
+        if self.tk_label_message is None:
+            return
+
         def reset_label(expected_status):
             if self.auth_status == expected_status:
                 self.tk_label_message.config(text='')
@@ -66,22 +70,22 @@ class GuiServie:
 
         elif status == AUTH_STATUS_TRAIN_SUCCESS:
             self.tk_label_message.config(text='記錄成功', fg='green')
-            self.tk_label_message.after(1000, reset_label, status)
+            self.tk_label_message.after(2000, reset_label, status)
 
         elif status == AUTH_STATUS_TRAIN_FAILED:
             self.tk_label_message.config(text='記錄失敗', fg='red')
-            self.tk_label_message.after(1000, reset_label, status)
+            self.tk_label_message.after(2000, reset_label, status)
 
         elif status == AUTH_STATUS_RECOGNIZING:
             self.tk_label_message.config(text='辨識中', fg='gray')
 
         elif status == AUTH_STATUS_RECOGNIZE_SUCCESS:
             self.tk_label_message.config(text='辨識成功', fg='green')
-            self.tk_label_message.after(1000, reset_label, status)
+            self.tk_label_message.after(2000, reset_label, status)
 
         elif status == AUTH_STATUS_RECOGNIZE_FAILED:
             self.tk_label_message.config(text='辨識失敗', fg='red')
-            self.tk_label_message.after(1000, reset_label, status)
+            self.tk_label_message.after(2000, reset_label, status)
 
 
     def worker(self):
