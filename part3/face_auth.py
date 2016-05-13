@@ -7,6 +7,7 @@ from threading import Thread
 import numpy
 import cv2
 
+import gui
 import config
 
 POSITIVE_LABEL = 1
@@ -47,8 +48,9 @@ class FaceAuthServie:
         self.flag_auth_granted = False
         self.camera = cv2.VideoCapture(0)
         self.flag_require_light_on = False
-
         self.face_models_path = face_models_path
+
+        gui_service.set_auth_status(gui.AUTH_STATUS_IDLE)
 
         if os.path.isfile(face_models_path):
             with open(face_models_path, 'rb') as file_models:
@@ -170,25 +172,31 @@ class FaceAuthServie:
 
             elif self.flag_train_request:
                 self.is_busy = True
-                self.gui_service.flag_train_face = True
+                self.gui_service.set_auth_status(gui.AUTH_STATUS_TRAINING)
 
                 description = self.create_face_identity()
                 if description is not None:
+                    self.gui_service.set_auth_status(gui.AUTH_STATUS_TRAIN_SUCCESS)
                     self.model_descriptions.append(description)
+                else:
+                    self.gui_service.set_auth_status(gui.AUTH_STATUS_TRAIN_FAILED)
 
                 self.flag_train_request = False
-                self.gui_service.flag_train_face = False
                 self.is_busy = False
 
             elif self.flag_recognition_request:
                 self.is_busy = True
-                self.gui_service.flag_recognize_face = True
+                self.gui_service.set_auth_status(gui.AUTH_STATUS_RECOGNIZING)
 
                 result = self.recognize_face(self.model_descriptions)
                 self.flag_auth_granted = result
 
+                if result:
+                    self.gui_service.set_auth_status(gui.AUTH_STATUS_RECOGNIZE_SUCCESS)
+                else:
+                    self.gui_service.set_auth_status(gui.AUTH_STATUS_RECOGNIZE_FAILED)
+
                 self.flag_recognition_request = False
-                self.gui_service.flag_recognize_face = False
                 self.is_busy = False
 
             else:
@@ -223,3 +231,6 @@ class FaceAuthServie:
         if result:
             self.flag_auth_granted = False
         return result
+
+    def get_auth_status(self):
+        pass

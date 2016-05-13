@@ -8,6 +8,15 @@ import cv2
 import config
 import constants
 
+# status codes for face authentication service
+AUTH_STATUS_IDLE              = 0
+AUTH_STATUS_TRAINING          = 1
+AUTH_STATUS_TRAIN_FAILED      = 2
+AUTH_STATUS_TRAIN_SUCCESS     = 3
+AUTH_STATUS_RECOGNIZING       = 4
+AUTH_STATUS_RECOGNIZE_FAILED  = 5
+AUTH_STATUS_RECOGNIZE_SUCCESS = 6
+
 class GuiServie:
     def __init__(self):
         self.auth_thread = None
@@ -16,6 +25,7 @@ class GuiServie:
         self.signal_recognize_face = False
         self.state = constants.STATE_OPEN
         self.camera_image = None
+        self.tk_label_message = None
 
     def get_camera_tk_image(self):
         if self.camera_image is not None:
@@ -41,6 +51,39 @@ class GuiServie:
     def set_house_state(self, state):
         self.state = state
 
+    def set_auth_status(self, status):
+        def reset_label(expected_status):
+            if self.auth_status == expected_status:
+                self.tk_label_message.config(text='')
+
+        self.auth_status = status
+
+        if status == AUTH_STATUS_IDLE:
+            self.tk_label_message.config(text='')
+
+        elif status == AUTH_STATUS_TRAINING:
+            self.tk_label_message.config(text='記錄面相中', fg='gray')
+
+        elif status == AUTH_STATUS_TRAIN_SUCCESS:
+            self.tk_label_message.config(text='記錄成功', fg='green')
+            self.tk_label_message.after(1000, reset_label, status)
+
+        elif status == AUTH_STATUS_TRAIN_FAILED:
+            self.tk_label_message.config(text='記錄失敗', fg='red')
+            self.tk_label_message.after(1000, reset_label, status)
+
+        elif status == AUTH_STATUS_RECOGNIZING:
+            self.tk_label_message.config(text='辨識中', fg='gray')
+
+        elif status == AUTH_STATUS_RECOGNIZE_SUCCESS:
+            self.tk_label_message.config(text='辨識成功', fg='green')
+            self.tk_label_message.after(1000, reset_label, status)
+
+        elif status == AUTH_STATUS_RECOGNIZE_FAILED:
+            self.tk_label_message.config(text='辨識失敗', fg='red')
+            self.tk_label_message.after(1000, reset_label, status)
+
+
     def worker(self):
         tk_root = tk.Tk()
         tk_root.title('CAVEDU智慧屋')
@@ -63,6 +106,10 @@ class GuiServie:
 
         button_recognize_face = tk.Button(tk_root, text='認證', font=('', 16), command=command_recognize_face)
         button_recognize_face.pack(side=tk.LEFT)
+
+        tk_label_message = tk.Label(tk_root, font=('', 16))
+        tk_label_message.pack(side=tk.RIGHT)
+        self.tk_label_message = tk_label_message
 
         def refresh():
             if self.flag_shutdown:
