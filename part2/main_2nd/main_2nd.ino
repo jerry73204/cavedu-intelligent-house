@@ -32,7 +32,7 @@ SoftwareSerial linkit7688(10, 11);
 int led_color[3] = {255, 255, 255};
 const int pinLight = A0;
 boolean danger = false;
-String sensor_value[7] = {"l", "", "i", "", "p", "", "e"};
+String sensor_value[9] = {"l", "", "i", "", "p", "", "s", "", "e"};
 int temp_1, temp_2;
 boolean livlight, roomlight;
 
@@ -44,8 +44,8 @@ void flash() {
   sensor_value[1] = String(LightSensor());
   sensor_value[3] = String(temp_1);
   sensor_value[5] = String(temp_2);
-
-  for (int i = 0; i < 7; i++)
+  sensor_value[7] = String(Solar());
+  for (int i = 0; i < 9; i++)
   {
     Serial1.print(sensor_value[i]);
     //Serial.println(sensor_value[i]);
@@ -197,8 +197,8 @@ void loop() {
     AutoCurtain();
 
     ///////////manual living room light///////////
-   RoomBtn();
-    
+    RoomBtn();
+
   }//if(!danger)
   temp_1 = TempSensor(4);
   temp_2 = TempSensor(8);

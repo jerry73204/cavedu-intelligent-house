@@ -1,7 +1,7 @@
 void AllStop()
 {
   colorWipe_living(strip_living.Color(0, 0, 0), 0);
-  
+
 }
 
 void Safe()

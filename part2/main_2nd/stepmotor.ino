@@ -17,6 +17,6 @@ void step_reset()
     z = digitalRead(A1);
     Serial.println(z);
   }
-  
+
     current_step = 0;
 }
