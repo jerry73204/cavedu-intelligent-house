@@ -18,9 +18,6 @@ import mediatek_cloud
 # the delay time (ms) after each loop
 LOOP_DELAY = 0.001
 
-# the timespan that the GPIO pin is set to 1
-OUTPUT_PIN_TIMESPAN = 0.03
-
 # do not send warning message for the timespan after the door is opened
 DOOR_OPEN_TIMESPAN = 5
 
@@ -48,7 +45,6 @@ GUI_SERVICE = None
 def run_in_background(func):
     thread = threading.Thread(target=func)
     thread.start()
-    # asyncio.get_event_loop().run_in_executor(None, func)
 
 def is_door_open():
     return GPIO.input(config.PIN_IN_MAGNET_SWITCH) == 0

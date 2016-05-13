@@ -53,10 +53,10 @@ class GuiServie:
         tk_label_image.pack()
 
         def command_train_face():
-            self.signal_train_face=True
+            self.signal_train_face = True
 
         def command_recognize_face():
-            self.signal_recognize_face=True
+            self.signal_recognize_face = True
 
         button_train_face = tk.Button(tk_root, text='記下特徵', font=('', 16), command=command_train_face)
         button_train_face.pack(side=tk.LEFT)
