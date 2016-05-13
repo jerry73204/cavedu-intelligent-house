@@ -51,3 +51,25 @@ https://github.com/tdicola/pi-facerec-box/archive/master.zip
 * Chinese explaination website:
 http://www.makezine.com.tw/make2599131456/153
 
+* Trace the code by reading the chinese explaination website:
+
+* Start by making the code work on our pi3:
+
+The first difference between our project and their's is we use usb camera, and they use the USB camera. We change the camera to cv2.VideoCapture(0), which means the default camera. Also, we do not change the kernel options for the rpi camera. Otherwise the rpi cannot find the camera and will not boot.
+
+Next we have to see the hardware. So we change button press into keyboard, and the door control using RPIO into a print on the screen.
+
+Last, we want to see the pictures caught. the original project have no screen, but we add one. OpenCV function is cv2.imshow(frame);waitKey(1); the window does not renew until waitKey. waitKey(0) waits forever. waitKey(1) waits for 1 millisecond.
+
+Now we can use a face recgonition program on RPI. We change it to our use.
+
+The user wants screen, so we always put the camera onto screen.
+The user wants to push button and start training/start recognition, so we merge train.py face_recognition.py into one code:
+the main thread prints camera onto screen.
+If a button is pushed, we go into the other code.
+In the other code, we keep printing the camera onto the screen, but we do training/ recognition at the same time.
+
+To communicate with the same flag, we use global flags.
+If we see a flag is up, then we do the corresponding action.
+After, we set another flag, for part3 main thread to read. 
+
