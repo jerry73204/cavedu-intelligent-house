@@ -19,7 +19,7 @@ import mediatek_cloud
 LOOP_DELAY = 0.001
 
 # do not send warning message for the timespan after the door is opened
-DOOR_OPEN_TIMESPAN = 5
+DOOR_OPEN_TIMEOUT = 20
 
 # PID file path
 PID_FILE_PATH = '/tmp/cavedu_house.pid'
@@ -92,11 +92,10 @@ def is_state_unchanged():
     return result
 
 def action_open_door():
-    def routine():
-        GPIO.output(config.PIN_OUT_LOCK, 0)
-        time.sleep(0.5)
-        GPIO.output(config.PIN_OUT_LOCK, 1)
-    run_in_background(routine)
+    GPIO.output(config.PIN_OUT_LOCK, 0)
+
+def action_close_door():
+    GPIO.output(config.PIN_OUT_LOCK, 1)
 
 def action_signal_housebreak():
     GPIO.output(config.PIN_OUT_INVADED, 1)
@@ -107,7 +106,7 @@ def action_signal_door_not_closed():
 
 def action_check_door_open_overtime(expected_state_change_time):
     def routine():
-        time.sleep(DOOR_OPEN_TIMESPAN)
+        time.sleep(DOOR_OPEN_TIMEOUT)
         if is_door_open() and STATE_CHANGE_TIME == expected_state_change_time:
             action_signal_door_not_closed()
     run_in_background(routine)
@@ -147,6 +146,7 @@ def on_emergency():
     global STATE
     if STATE != constants.STATE_EMERGENCY:
         logging.debug('event emergency')
+        action_open_door()
         mediatek_cloud.set_house_status('EMERGENCY')
         STATE = constants.STATE_EMERGENCY
 
@@ -161,6 +161,7 @@ def on_door_closing():
     logging.debug('event door_closing')
 
     GPIO.output(config.PIN_OUT_TIMEOUT, 0)
+    action_close_door()
 
     if STATE == constants.STATE_CLOSED:
         logging.warning('event door_closing is triggered in CLOSED state')

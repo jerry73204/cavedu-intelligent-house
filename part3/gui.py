@@ -105,10 +105,10 @@ class GuiServie:
         def command_recognize_face():
             self.signal_recognize_face = True
 
-        button_train_face = tk.Button(tk_root, text='記下特徵', font=('', 16), command=command_train_face)
+        button_train_face = tk.Button(tk_root, text='記錄面相', font=('', 16), command=command_train_face)
         button_train_face.pack(side=tk.LEFT)
 
-        button_recognize_face = tk.Button(tk_root, text='認證', font=('', 16), command=command_recognize_face)
+        button_recognize_face = tk.Button(tk_root, text='檢驗面相', font=('', 16), command=command_recognize_face)
         button_recognize_face.pack(side=tk.LEFT)
 
         tk_label_message = tk.Label(tk_root, font=('', 16))

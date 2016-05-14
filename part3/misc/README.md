@@ -64,7 +64,7 @@ Last, we want to see the pictures caught. the original project have no screen, b
 Now we can use a face recgonition program on RPI. We change it to our use.
 
 The user wants screen, so we always put the camera onto screen.
-The user wants to push button and start training/start recognition, so we merge train.py face_recognition.py into one code:
+The user wants to push button and start training/start recognition, so we merge train.py face\_recognition.py into one code:
 the main thread prints camera onto screen.
 If a button is pushed, we go into the other code.
 In the other code, we keep printing the camera onto the screen, but we do training/ recognition at the same time.
