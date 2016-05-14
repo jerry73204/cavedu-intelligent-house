@@ -79,6 +79,9 @@ def is_signaled_train_face():
 def is_signaled_recognize_face():
     return GUI_SERVICE.is_signaled_recognize_face()
 
+def is_signaled_clear_faces():
+    return GUI_SERVICE.is_signaled_clear_faces()
+
 def is_state_changed():
     global PREV_STATE_1
     result = PREV_STATE_1 != STATE
@@ -119,6 +122,9 @@ def action_train_face():
 
 def action_recognize_face():
     FACE_AUTH_SERVICE.signal_recognize_face()
+
+def action_clear_faces():
+    FACE_AUTH_SERVICE.signal_clear_faces()
 
 # event handlers
 def on_auth():
@@ -225,6 +231,9 @@ def main():
 
         if is_signaled_train_face():
             action_train_face()
+
+        if is_signaled_clear_faces():
+            action_clear_faces()
 
         if is_signaled_recognize_face():
             action_recognize_face()

@@ -44,6 +44,7 @@ class FaceAuthServie:
         self.flag_shutdown = False
         self.flag_train_request = False
         self.flag_recognition_request = False
+        self.flag_clear_faces_request = False
         self.is_busy = False
         self.flag_auth_granted = False
         self.camera = cv2.VideoCapture(0)
@@ -199,6 +200,10 @@ class FaceAuthServie:
                 self.flag_recognition_request = False
                 self.is_busy = False
 
+            elif self.flag_clear_faces_request:
+                self.model_descriptions = list()
+                self.flag_clear_faces_request = False
+
             else:
                 _, frame = self.camera.read()
                 frame = flip_image(frame)
@@ -225,6 +230,9 @@ class FaceAuthServie:
             return True
         else:
             return False
+
+    def signal_clear_faces(self):
+        self.flag_clear_faces_request = True
 
     def is_auth_granted(self):
         result = self.flag_auth_granted

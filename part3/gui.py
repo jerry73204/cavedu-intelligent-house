@@ -49,6 +49,13 @@ class GuiServie:
 
         return result
 
+    def is_signaled_clear_faces(self):
+        result = self.signal_clear_faces
+        if result:
+            self.signal_clear_faces = False
+
+        return result
+
     def set_house_state(self, state):
         self.state = state
 
@@ -105,15 +112,21 @@ class GuiServie:
         def command_recognize_face():
             self.signal_recognize_face = True
 
+        def command_clear_faces():
+            self.signal_clear_faces = True
+
+        tk_label_message = tk.Label(tk_root, font=('', 16))
+        tk_label_message.pack()
+        self.tk_label_message = tk_label_message
+
         button_train_face = tk.Button(tk_root, text='記錄面相', font=('', 16), command=command_train_face)
         button_train_face.pack(side=tk.LEFT)
 
+        button_clear_faces = tk.Button(tk_root, text='清除已記錄面相', font=('', 16), command=command_clear_faces)
+        button_clear_faces.pack(side=tk.LEFT)
+
         button_recognize_face = tk.Button(tk_root, text='檢驗面相', font=('', 16), command=command_recognize_face)
         button_recognize_face.pack(side=tk.LEFT)
-
-        tk_label_message = tk.Label(tk_root, font=('', 16))
-        tk_label_message.pack(side=tk.RIGHT)
-        self.tk_label_message = tk_label_message
 
         def refresh():
             if self.flag_shutdown:
