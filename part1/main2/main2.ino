@@ -1,5 +1,5 @@
 #include <LGSM.h>
-String number = "0919220341";
+#define number "0928660419"
 int pinE = 5;
 int pinF = 6;
 int pinG = 7;
@@ -19,7 +19,6 @@ void setup() {
 //    Serial.println("Waiting for SMS");
   }
 //  Serial.println("Sim initialized");
-  LSMS.beginSMS("0928660419");
 }
 
 void loop() {
@@ -46,7 +45,7 @@ void loop() {
       else if(c == 'I'){
         message  = "someone enter into the house";
       }
-
+      LSMS.beginSMS(number);
       LSMS.print(message);
       LSMS.endSMS();
     }
