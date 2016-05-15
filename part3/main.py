@@ -162,7 +162,7 @@ def action_check_door_open_overtime(expected_state_change_time):
             action_signal_door_not_closed()
     run_in_background(routine)
 
-def actoin_set_light(light_on):
+def action_set_light(light_on):
     GPIO.output(config.PIN_OUT_LIGHT, 0 if light_on else 1)
 
 def action_train_face():
@@ -247,14 +247,14 @@ def main():
 
     # initialize
     if is_door_open():
-        STATE = PREV_STATE_1 = PREV_STATE_2 = constants.STATE_OPEN
         PREV_DOOR_OPEN = True
         PREV_DOOR_CLOSED = False
-
     else:
-        STATE = PREV_STATE_1 = PREV_STATE_2 = constants.STATE_CLOSED
         PREV_DOOR_OPEN = False
         PREV_DOOR_CLOSED = True
+
+    STATE = PREV_STATE_1 = PREV_STATE_2 = constants.STATE_OPEN
+    action_open_door()
 
     # monitor the events by polling
     while True:
@@ -272,7 +272,7 @@ def main():
             exit()
 
         # check events
-        actoin_set_light(FACE_AUTH_SERVICE.flag_require_light_on)
+        action_set_light(FACE_AUTH_SERVICE.flag_require_light_on)
 
         if is_signaled_emergency():
             on_emergency()
