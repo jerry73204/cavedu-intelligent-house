@@ -1,3 +1,5 @@
+import os
+
 # GPIO
 PIN_OUT_INVADED      = 21
 PIN_OUT_TIMEOUT      = 20
@@ -33,7 +35,7 @@ SUCCESS_RATE_THRESHOLD = 0.7
 NUM_SAMPLED_TRAINING_IMAGES = 5
 NUM_SAMPLED_TESTING_IMAGES  = 3
 
-HAAR_FACES         = 'haarcascade_frontalface_alt.xml'
+HAAR_FACES         =  '%s/haarcascade_frontalface_alt.xml' % os.path.dirname(os.path.realpath(__file__))
 HAAR_SCALE_FACTOR  = 1.3
 HAAR_MIN_NEIGHBORS = 4
 HAAR_MIN_SIZE      = (30, 30)
