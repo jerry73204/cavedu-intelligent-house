@@ -1,3 +1,6 @@
+#!/usr/bin/env python2
+# -*- coding: utf-8 -*-
+
 # Copyright (C) HENNES CO., LTD. - All Rights Reserved
 # Unauthorized copying of this file, via any medium is strictly prohibited
 # Proprietary and confidential
@@ -8,8 +11,7 @@
 # Hsiang-Jiu Lin
 # Cheng-Chang Liu
 # Pei-Hsuan Yan
-#!/usr/bin/env python2
-# -*- coding: utf-8 -*-
+
 import os
 import time
 import logging
