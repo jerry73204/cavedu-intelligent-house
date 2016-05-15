@@ -65,7 +65,7 @@ def is_door_opening():
 
     value = is_door_open()
     up_edge = (PREV_DOOR_OPEN ^ value) & value
-    PREV_DOOR_OPEN = up_edge
+    PREV_DOOR_OPEN = value
 
     if up_edge:
         FLAG_DOOR_OPENING_TRIGGERED = False
