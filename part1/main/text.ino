@@ -49,7 +49,7 @@ char readText(){
   int curIn = digitalRead(pi1);
   int curDo = digitalRead(pi2);
   char result;
-  
+
   if((e_value - pe_value) == 1){
     result = 'E';
   }
@@ -82,6 +82,6 @@ char readText(){
   pg_value = g_value;
   pIn = curIn;
   pDo = curDo;
-  
+
   return result;
 }

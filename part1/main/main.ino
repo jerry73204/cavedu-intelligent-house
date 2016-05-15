@@ -15,7 +15,7 @@ void loop() {
   Serial.println("-------------------");
   //----------check condition----------
   int Status = checkCondition();//0-normal,1-fire,2-earthquake,3-gas,4-door,5-invasion
-  
+
   //----------nothing happened----------
   if(Status == 0){
     Serial.println("nothing happened");
@@ -25,7 +25,7 @@ void loop() {
       count = 0;
     }
   }
-  
+
   //----------earthquake----------
   else if(Status == 1){
     Serial.println("earthquake strikes");
@@ -46,11 +46,11 @@ void loop() {
     sendText(3,'S');
     delay(1000);
   }
-  
+
   //----------fire----------
   else if(Status == 2){
     Serial.println("house is on fire");
-    
+
     //----------send message----------
     sendText(1,'F');//Linkit One Text
     sendText(2,'F');//Light
@@ -68,7 +68,7 @@ void loop() {
     sendText(3,'S');
     delay(1000);
   }
-  
+
   //----------gas leak----------
   else if(Status == 3){
     Serial.println("gas is leaking");
@@ -86,7 +86,7 @@ void loop() {
     sendText(1,'S');
     delay(1000);
   }
-  
+
   //----------door not close----------
   else if(Status == 4){
     Serial.println("door is not closed");
@@ -98,7 +98,7 @@ void loop() {
     Serial.println("massage has been sent");
     delay(1000);
   }
-  
+
   //----------house is invaded----------
   else if(Status == 5){
     Serial.println("some enter into the house");
@@ -110,7 +110,7 @@ void loop() {
     Serial.println("massage has been sent");
     delay(1000);
   }
-  
+
   //----------sensor value----------
   Serial.println("-------------------");
   Serial.print("gas sensor:  ");
@@ -126,7 +126,7 @@ int checkCondition(){
   gas_value = gas_sensor(R0);
   char readMsg = readText(); //get message
   //check condition
-  
+
   int result = 0;
   //----------earthquake----------
   if(readMsg == 'E'){
