@@ -72,7 +72,7 @@ def is_door_opening():
         LAST_OPENING_TIME = time.time()
 
     result = False
-    if value and not FLAG_DOOR_OPENING_TRIGGERED and time.time() - LAST_OPENING_TIME >= 0.02:
+    if value and not FLAG_DOOR_OPENING_TRIGGERED and time.time() - LAST_OPENING_TIME >= 0.2:
         FLAG_DOOR_OPENING_TRIGGERED = True
         result = True
 
@@ -92,7 +92,7 @@ def is_door_closing():
         FLAG_DOOR_CLOSING_TRIGGERED = False
 
     result = False
-    if value and not FLAG_DOOR_CLOSING_TRIGGERED and time.time() - LAST_CLOSING_TIME >= 0.02:
+    if value and not FLAG_DOOR_CLOSING_TRIGGERED and time.time() - LAST_CLOSING_TIME >= 0.2:
         FLAG_DOOR_CLOSING_TRIGGERED = True
         result = True
 
