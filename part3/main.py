@@ -33,6 +33,9 @@ PREV_VALUE_RECOGNIZE_FACE = False
 PREV_STATE_1 = None
 PREV_STATE_2 = None
 
+LAST_SIGNALED_EMERGENCY_TIME = 0
+FLAG_EMERGENCY_TRIGGERED = False
+
 STATE_CHANGE_TIME = 0
 
 STATE = constants.STATE_CLOSED
@@ -68,9 +71,22 @@ def is_authenticated():
 
 def is_signaled_emergency():
     global PREV_VALUE_EMERGENCY
+    global LAST_SIGNALED_EMERGENCY_TIME
+    global FLAG_EMERGENCY_TRIGGERED
+
     value = GPIO.input(config.PIN_IN_EMERGENCY) == 1
-    result = (PREV_VALUE_EMERGENCY ^ value) & value
+    is_up_edge = (PREV_VALUE_EMERGENCY ^ value) & value
     PREV_VALUE_EMERGENCY = value
+
+    if is_up_edge:
+        LAST_SIGNALED_EMERGENCY_TIME = time.time()
+        FLAG_EMERGENCY_TRIGGERED = False
+
+    result = False
+    if value and not FLAG_EMERGENCY_TRIGGERED and time.time() - LAST_SIGNALED_EMERGENCY_TIME >= 0.5:
+        result = True
+        FLAG_EMERGENCY_TRIGGERED = True
+
     return result
 
 def is_signaled_train_face():
