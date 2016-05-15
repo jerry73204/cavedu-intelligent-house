@@ -36,6 +36,12 @@ PREV_STATE_2 = None
 LAST_SIGNALED_EMERGENCY_TIME = 0
 FLAG_EMERGENCY_TRIGGERED = False
 
+LAST_OPENING_TIME = 0
+LAST_CLOSING_TIME = 0
+
+FLAG_DOOR_OPENING_TRIGGERED = False
+FLAG_DOOR_CLOSING_TRIGGERED = False
+
 STATE_CHANGE_TIME = 0
 
 STATE = constants.STATE_CLOSED
@@ -54,16 +60,41 @@ def is_door_open():
 
 def is_door_opening():
     global PREV_DOOR_OPEN
+    global LAST_OPENING_TIME
+
     value = is_door_open()
-    result = (PREV_DOOR_OPEN ^ value) & value
-    PREV_DOOR_OPEN = value
+    up_edge = (PREV_DOOR_OPEN ^ value) & value
+    PREV_DOOR_OPEN = up_edge
+
+    if up_edge:
+        FLAG_DOOR_OPENING_TRIGGERED = False
+        LAST_OPENING_TIME = time.time()
+
+    result = False
+    if value and not FLAG_DOOR_OPENING_TRIGGERED and time.time() - LAST_OPENING_TIME >= 0.02:
+        FLAG_DOOR_OPENING_TRIGGERED = True
+        result = True
+
     return result
 
 def is_door_closing():
     global PREV_DOOR_CLOSED
+    global LAST_CLOSING_TIME
+    global FLAG_DOOR_CLOSING_TRIGGERED
+
     value = not is_door_open()
-    result = (PREV_DOOR_CLOSED ^ value) & value
+    down_edge = (PREV_DOOR_CLOSED ^ value) & value
     PREV_DOOR_CLOSED = value
+
+    if down_edge:
+        LAST_CLOSING_TIME = time.time()
+        FLAG_DOOR_CLOSING_TRIGGERED = False
+
+    result = False
+    if value and not FLAG_DOOR_CLOSING_TRIGGERED and time.time() - LAST_CLOSING_TIME >= 0.02:
+        FLAG_DOOR_CLOSING_TRIGGERED = True
+        result = True
+
     return result
 
 def is_authenticated():
