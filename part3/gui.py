@@ -23,6 +23,7 @@ class GuiServie:
         self.flag_shutdown = False
         self.signal_train_face = False
         self.signal_recognize_face = False
+        self.signal_clear_faces = False
         self.state = constants.STATE_OPEN
         self.camera_image = None
         self.tk_label_message = None
