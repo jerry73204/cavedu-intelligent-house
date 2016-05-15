@@ -61,6 +61,7 @@ def is_door_open():
 def is_door_opening():
     global PREV_DOOR_OPEN
     global LAST_OPENING_TIME
+    global FLAG_DOOR_OPENING_TRIGGERED
 
     value = is_door_open()
     up_edge = (PREV_DOOR_OPEN ^ value) & value
