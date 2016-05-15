@@ -49,7 +49,7 @@ char readText(){
   int curIn = digitalRead(pi1);
   int curDo = digitalRead(pi2);
   char result;
-
+  
   if((e_value - pe_value) == 1){
     result = 'E';
   }
@@ -60,14 +60,20 @@ char readText(){
     result = 'G';
   }
   else if((curIn - pIn) == 1){
-    result = 'I';
+    delay(200);
+    if(digitalRead(pi1)){
+      result = 'I';
+    }
   }
   else if((curDo - pDo) == 1){
-    result = 'D';
+    delay(200);
+    if(digitalRead(pi2)){
+      result = 'D';
+    }
   }
-  else if(Serial.available()){
+  /*else if(Serial.available()){
     result =  Serial.read();
-  }
+  }*/
   else{
     result = 'S';
   }
@@ -76,6 +82,6 @@ char readText(){
   pg_value = g_value;
   pIn = curIn;
   pDo = curDo;
-
+  
   return result;
 }
