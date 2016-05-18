@@ -63,10 +63,8 @@ def client_handler(reader, writer):
 
             payload = os.read(reader.fileno(), size_left)
             if len(payload) == 0: # check if the file is closed or reaches EOF
-
                 if size_left != 4:
-                    # TODO print warning
-                    pass
+                    logging.warning('connection lost while request is not complete')
 
                 finalize()
                 return
@@ -90,7 +88,7 @@ def client_handler(reader, writer):
                     try:
                         request_data = json.loads(read_buffer)
                     except ValueError: # check if this string can be decoded as JSON object
-                        # TODO print warning
+                        logging.warning('corrupted request detected. connection closed')
                         finalize()
                         return
 
@@ -119,7 +117,9 @@ def client_handler(reader, writer):
 def main():
     global USE_STANDARD_IO
 
-    # specify signal handler
+    # setups
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
     signal.signal(signal.SIGINT, signal_handler)
 
     # argument specification
@@ -213,7 +213,9 @@ def main():
                 break
 
         for sock in ready_socks:
-            client_sock, _ = sock.accept()
+            client_sock, client_addr = sock.accept()
+            logging.info('client %s:%d connected', *client_addr)
+
             thread = Thread(target=client_handler, args=(client_sock, client_sock))
             thread.start()
             serving_threads.append(thread)
