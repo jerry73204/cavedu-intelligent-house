@@ -1,256 +1,116 @@
 #!/usr/bin/env python2
-# -*- coding: utf-8 -*-
+import re
+import sys
+import argparse
+import socket
+import select
+from threading import Thread
 
-import logging
-import signal
-
-# import RPi.GPIO as GPIO
 import serial
-import tornado.web
-import tornado.ioloop
-import tornado.httpclient
 
-import config
-import constants
-import __version__
+SERVER_SOCKETS = list()
+SERIAL_DEVICES = list()
+OPENED_FILES = list()
+USE_STANDARD_IO = False
 
-MASTER_ADDRESS = None
-MASTER_PORT = None
-GPIO_INPUT_PINS_WITH_SAVED_VALUES = dict()
-GPIO_OUTPUT_PINS = set()
-SERIAL_DEVICES = dict()
-
-class InfoHandler(tornado.web.RequestHandler):
-    def get(self):
-        info = {
-            'version': __version__.VERSION
-        }
-        self.write(info)
-
-class UpdateConfigHandler(tornado.web.RequestHandler):
-    def get(self):
-        def error_response(reason):
-            response = {
-                'status': 'error',
-                'reason': reason
-            }
-            self.write(response)
-
-        global GPIO_INPUT_PINS_WITH_SAVED_VALUES
-        global GPIO_OUTPUT_PINS
-        global SERIAL_DEVICES
-
-        data = tornado.escape.json_decode(self.request.body)
-
-        # verify GPIO configuration
-        gpio_input_pins = set(data['gpio']['inputs'])
-        gpio_output_pins = set(data['gpio']['outputs'])
-
-        if len(gpio_input_pins & gpio_output_pins) != 0:
-            error_response('no GPIO pins cannot be in both input and output modes')
-            return
-
-        for pin in gpio_input_pins:
-            if pin not in constants.GPIO_PIN_NUMBERS:
-                error_response('%d is not a valid GPIO pin number' % pin)
-                return
-            # GPIO.setup(pin, GPIO.IN)
-
-        for pin in gpio_output_pins:
-            if pin not in constants.GPIO_PIN_NUMBERS:
-                error_response('%d is not a valid GPIO pin number' % pin)
-                return
-
-        # update GPIO output pins
-        GPIO_OUTPUT_PINS = gpio_output_pins
-        for pin in gpio_output_pins:
-            # GPIO.setup(pin, GPIO.OUT)
-            pass
-
-        # update GPIO input pins
-        for removed_pins in GPIO_INPUT_PINS_WITH_SAVED_VALUES.keys - gpio_input_pins:
-            del GPIO_INPUT_PINS_WITH_SAVED_VALUES[removed_pins]
-
-        for inserted_pins in gpio_input_pins - GPIO_INPUT_PINS_WITH_SAVED_VALUES.keys():
-            GPIO_INPUT_PINS_WITH_SAVED_VALUES[inserted_pins] = None
-            # GPIO.setup(pin, GPIO.IN)
-
-        # update serial device configuration
-        for device_path, serial_object in SERIAL_DEVICES:
-            serial_object.close()
-        SERIAL_DEVICES = dict()
-
-        serial_devices = dict()
-        for device_path, baudrate in data['serial']:
-            if device_path in serial_devices:
-                error_response('the serial device "%s" is specified more than once' % device_path)
-                return
-
-            try:
-                serial_object = serial.Serial(port=device_path, baudrate=baudrate)
-                serial_devices[device_path] = serial_object
-
-            except serial.SerialException:
-                for serial_obj in serial_devices.values():
-                    serial_obj.close()
-
-                error_response('failed to open serial port "%s"' % device_path)
-                return
-
-        SERIAL_DEVICES = serial_devices
-
-class GpioReadHandler(tornado.web.RequestHandler):
-    def get(self, pin_number):
-        pin_number = int(pin_number)
-
-        if pin_number in constants.GPIO_PIN_NUMBERS and pin_number in GPIO_INPUT_PINS_WITH_SAVED_VALUES:
-            response = {
-                'status': 'ok',
-                'value': 123
-                # 'value': GPIO.input(pin_number)
-            }
-        else:
-            response = {
-                'status': 'error',
-                'reason': '%d is not a valid GPIO pin number' % pin_number
-            }
-
-        self.write(response)
-
-class GpioWriteHandler(tornado.web.RequestHandler):
-    def get(self, pin_number, value):
-        pin_number = int(pin_number)
-        value = int(value)
-
-        if pin_number in constants.GPIO_PIN_NUMBERS and pin_number in GPIO_OUTPUT_PINS:
-            # GPIO.output(pin_number, value)
-
-            response = {
-                'status': 'ok',
-            }
-
-        else:
-            response = {
-                'status': 'error',
-                'reason': '%d is not a valid GPIO pin number' % pin_number
-            }
-
-        self.write(response)
-
-class SerialReadHandler(tornado.web.RequestHandler):
-    def get(self):
-        def error_response(reason):
-            response = {
-                'status': 'error',
-                'reason': reason
-            }
-            self.write(response)
-
-        request_data = tornado.escape.json_decode(self.request.body)
-        read_size = request_data['size']
-        device_path = request_data['path']
-
-        if read_size < 0:
-            error_response('%d is not a valid buffer size' % read_size)
-            return
-
-        if device_path not in SERIAL_DEVICES:
-            error_response('"%s" is not a valid serial device')
-            return
-
-        serial_object = SERIAL_DEVICES[device_path]
-        payload = serial_object.read(read_size)
-
-        response = {
-            'status': 'ok',
-            'data': payload
-        }
-        self.write(response)
-
-class SerialWriteHandler(tornado.web.RequestHandler):
-    def get(self):
-        def error_response(reason):
-            response = {
-                'status': 'error',
-                'reason': reason
-            }
-            self.write(response)
-
-        request_data = tornado.escape.json_decode(self.request.body)
-        device_path = request_data['path']
-        payload = request_data['data']
-
-        if device_path not in SERIAL_DEVICES:
-            error_response('"%s" is not a valid serial device')
-            return
-
-        serial_object = SERIAL_DEVICES[device_path]
-        serial_object.write(payload)
-
-        response = {
-            'status': 'ok',
-        }
-        self.write(response)
-
-def trigger_event_on_master(event, data):
-    url = 'http://%s:%d/api' % (MASTER_ADDRESS, MASTER_PORT)
-    body = {
-        'event': event,
-        'data': data
-    }
-
-    request = tornado.httpclient.HTTPRequest(url, body=body)
-
-    try:
-        client = tornado.httpclient.AsyncHTTPClient()
-        client.fetch(request)
-
-    except tornado.httpclient.HTTPError:
-        logging.error('cannot connect to address "http://%s:%d/api"',MASTER_ADDRESS, MASTER_PORT)
-
-def house_periodic_worker():
-    for pin, saved_value in enumerate(GPIO_INPUT_PINS_WITH_SAVED_VALUES):
-        curr_value = 0
-        # curr_value = GPIO.input(pin)
-        GPIO_INPUT_PINS_WITH_SAVED_VALUES[pin] = curr_value
-
-        if saved_value is not None and saved_value != curr_value:
-            data = {
-                'pin': pin,
-                'from': saved_value,
-                'to': curr_value
-            }
-            trigger_event_on_master('gpio_input_change', data)
-
-    for device_path, serial_object in SERIAL_DEVICES:
-        if serial_object.in_waitint() > 0:
-            data = {
-                'path': device_path
-            }
-            trigger_event_on_master('serial_has_input', data)
-
-def signal_handler(signum, frame):
-    # constants.SHUTDOWN_FLAG = True
-    tornado.ioloop.IOLoop.current().stop()
+def client_handler(reader, writer):
+    pass
 
 def main():
-    logger = logging.getLogger()
-    logger.setLevel(logging.DEBUG)
-    signal.signal(signal.SIGINT, signal_handler)
-    tornado.log.enable_pretty_logging()
+    global USE_STANDARD_IO
 
-    app = tornado.web.Application([
-        (r'/info', InfoHandler),
-        (r'/update-config', UpdateConfigHandler),
-        (r'/gpio/read/(\d+)', GpioReadHandler),
-        (r'/gpio/write/(\d+)/(0|1)', GpioWriteHandler),
-        (r'/serial/read', SerialReadHandler),
-        (r'/serial/write', SerialWriteHandler),
-    ])
-    app.listen(config.LISTEN_PORT)
+    # argument specification
+    arg_parser = argparse.ArgumentParser(description='CAVEDU intelligent house client')
+    arg_parser.add_argument('--device',
+                            required=True,
+                            metavar='DEVICE_TYPE',
+                            choices=['MT7688', 'Pi1', 'Pi2', 'Pi3'],
+                            nargs=1,
+                            help='specify the device model. DEVICE_TYPE can be either MT7688, Pi1, Pi2, Pi3')
+    arg_parser.add_argument('--serial',
+                            metavar=('SERIAL_PATH', 'BAUDRATE'),
+                            nargs=2,
+                            action='append',
+                            help='use serial communication. eg. --serial /dev/ttyAMA0')
+    arg_parser.add_argument('--network',
+                            metavar='HOST:PORT',
+                            nargs=1,
+                            action='append',
+                            help='use network communicatoin over a TCP connection, HOST is optional. eg. --network 22177, --network 127.0.0.1:22177')
+    arg_parser.add_argument('--file',
+                            metavar='FILE',
+                            nargs=1,
+                            action='append',
+                            help='treat FILE as a communication channel')
+    arg_parser.add_argument('--standard-io',
+                            action='store_true',
+                            help='treat standard input, standard output as a communication channel')
+    args = arg_parser.parse_args()
 
-    tornado.ioloop.PeriodicCallback(house_periodic_worker, 10).start()
-    tornado.ioloop.IOLoop.current().start()
+    # parse arguments
+
+    if args.network is not None:
+        for arg in args.network:
+            _, host, port = re.findall('^(([^:]+):)?(\d{1,5})$', arg[0])[0]
+            port = int(port)
+
+            if port > 65535:
+                exit(2)
+
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.bind((host, port))
+            sock.listen(5)
+            SERVER_SOCKETS.append(sock)
+
+
+    if args.serial is not None:
+        for arg in args.serial:
+            serial_path, baudrate = arg
+            baudrate = int(baudrate)
+
+            serial_device = serial.Serial(serial_path, baudrate=baudrate)
+            SERIAL_DEVICES.append(serial_device)
+
+    if args.file is not None:
+        for arg in args.file:
+            file_path = arg[0]
+            opened_file = open(file_path, 'rwb')
+            OPENED_FILES.append(opened_file)
+
+    if args.standard_io:
+        USE_STANDARD_IO = True
+
+    if not USE_STANDARD_IO and len(SERVER_SOCKETS) == 0 and len(SERIAL_DEVICES) == 0 and len(OPENED_FILES) == 0:
+        exit(2)
+
+    # create serving threads
+    serving_threads = list()
+
+    for serial_device in SERIAL_DEVICES:
+        thread = Thread(target=client_handler, args=(serial_device, serial_device))
+        thread.start()
+        serving_threads.append(thread)
+
+    for opened_file in OPENED_FILES:
+        thread = Thread(target=client_handler, args=(opened_file, opened_file))
+        thread.start()
+        serving_threads.append(thread)
+
+    if USE_STANDARD_IO:
+        thread = Thread(target=client_handler, args=(sys.stdin, sys.stdout))
+        thread.start()
+        serving_threads.append(thread)
+
+    # listen for incoming connections
+    while True:
+        # TODO timeout
+        ready_socks = select.select(SERVER_SOCKETS, list(), list())[0]
+
+        for sock in ready_socks:
+            client_sock, _ = sock.accept()
+            thread = Thread(target=client_handler, args=(client_sock, client_sock))
+            thread.start()
+            serving_threads.append(thread)
 
 if __name__ == '__main__':
     main()
