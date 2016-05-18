@@ -1,10 +1,15 @@
 #!/usr/bin/env python2
+import os
 import re
 import sys
+import json
 import argparse
 import socket
 import select
+import signal
+import struct
 from threading import Thread
+import logging
 
 import serial
 
@@ -13,11 +18,109 @@ SERIAL_DEVICES = list()
 OPENED_FILES = list()
 USE_STANDARD_IO = False
 
+SELECT_TIMEOUT = 1
+FLAG_SHUTDOWN = False
+
+def signal_handler(signum, frame):
+    global FLAG_SHUTDOWN
+    FLAG_SHUTDOWN = True
+
+def handle_request(data):
+    return data
+
 def client_handler(reader, writer):
-    pass
+    state_read_size = 1
+    state_read_content = 2
+    state_write = 3
+
+    state = state_read_size
+    size_left = 4
+
+    read_buffer = ''
+    write_buffer = ''
+
+    def finalize():
+        if 'close' in dir(reader):
+            reader.close()
+        else:
+            os.close(reader.fileno())
+
+        if 'close' in dir(writer):
+            writer.close()
+        else:
+            os.close(writer.fileno())
+
+
+    while not FLAG_SHUTDOWN:
+        if state in (state_read_size, state_read_content):
+            try:
+                if len(select.select([reader], list(), list(), SELECT_TIMEOUT)[0]) == 0:
+                    continue
+            except select.error as e:
+                if e[0] == 4:   # check interrupted system call
+                    finalize()
+                    return
+
+            payload = os.read(reader.fileno(), size_left)
+            if len(payload) == 0: # check if the file is closed or reaches EOF
+
+                if size_left != 4:
+                    # TODO print warning
+                    pass
+
+                finalize()
+                return
+
+            size_left -= len(payload)
+            read_buffer += payload
+
+            if size_left == 0:
+                if state == state_read_size:
+                    request_size = struct.unpack('<I', read_buffer)[0]
+
+                    if request_size > 0:
+                        size_left = request_size
+                        read_buffer = ''
+                        state = state_read_content
+                    else:
+                        size_left = 4
+                        read_buffer = ''
+
+                else:           # case state == state_read_content
+                    try:
+                        request_data = json.loads(read_buffer)
+                    except ValueError: # check if this string can be decoded as JSON object
+                        # TODO print warning
+                        finalize()
+                        return
+
+                    response = handle_request(request_data)
+                    write_buffer = json.dumps(response)
+                    write_buffer = struct.pack('<I', len(write_buffer)) + write_buffer
+                    state = state_write
+
+        elif state == state_write:
+            try:
+                if len(select.select(list(), [writer], list(), SELECT_TIMEOUT)[1]) == 0:
+                    continue
+            except select.error as e: # check interrupted system call
+                if e[0] == 4:
+                    finalize()
+                    return
+
+            written_size = os.write(writer.fileno(), write_buffer)
+            write_buffer = write_buffer[written_size:]
+
+            if len(write_buffer) == 0:
+                size_left = 4
+                read_buffer = ''
+                state = state_read_size
 
 def main():
     global USE_STANDARD_IO
+
+    # specify signal handler
+    signal.signal(signal.SIGINT, signal_handler)
 
     # argument specification
     arg_parser = argparse.ArgumentParser(description='CAVEDU intelligent house client')
@@ -51,7 +154,7 @@ def main():
 
     if args.network is not None:
         for arg in args.network:
-            _, host, port = re.findall('^(([^:]+):)?(\d{1,5})$', arg[0])[0]
+            _, host, port = re.findall(r'^(([^:]+):)?(\d{1,5})$', arg[0])[0]
             port = int(port)
 
             if port > 65535:
@@ -102,15 +205,21 @@ def main():
         serving_threads.append(thread)
 
     # listen for incoming connections
-    while True:
-        # TODO timeout
-        ready_socks = select.select(SERVER_SOCKETS, list(), list())[0]
+    while not FLAG_SHUTDOWN:
+        try:
+            ready_socks = select.select(SERVER_SOCKETS, list(), list(), SELECT_TIMEOUT)[0]
+        except select.error as e:
+            if e[0] == 4:       # check interrupted system call
+                break
 
         for sock in ready_socks:
             client_sock, _ = sock.accept()
             thread = Thread(target=client_handler, args=(client_sock, client_sock))
             thread.start()
             serving_threads.append(thread)
+
+    for thread in serving_threads:
+        thread.join()
 
 if __name__ == '__main__':
     main()
