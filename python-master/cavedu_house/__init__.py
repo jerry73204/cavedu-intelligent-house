@@ -133,12 +133,17 @@ class HouseDevice:
         return response['status'] == 'ok'
 
     def i2c_read(self, register):
-        # TODO impl.
-        pass
+        request = {'action': 'i2c_read',
+                   'register': register}
+        response = send_request(request)
+        return response['status'] == 'ok'
 
     def i2c_write(self, register, value):
-        # TODO impl.
-        pass
+        request = {'action': 'i2c_write',
+                   'register': register,
+                   'value': value}
+        response = send_request(request)
+        return response['status'] == 'ok'
 
     def serial_read(self):
         # TODO impl.
