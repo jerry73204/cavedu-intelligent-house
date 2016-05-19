@@ -7,6 +7,9 @@ CHANNEL_TYPE_NETWORK = 0
 CHANNEL_TYPE_SERIAL  = 1
 CHANNEL_TYPE_FILE    = 2
 
+GPIO_MODE_INPUT = 0
+GPIO_MODE_OUTPUT = 1
+
 class HouseDevice:
     def __init__(self, channel_type, **kargs):
         assert channel_type in (CHANNEL_TYPE_NETWORK, CHANNEL_TYPE_SERIAL, CHANNEL_TYPE_FILE)
@@ -109,20 +112,38 @@ class HouseDevice:
 
         return json.loads(response_buffer)
 
+    def gpio_set_mode(self, pin, mode):
+        assert mode in (GPIO_MODE_INPUT, GPIO_MODE_OUTPUT)
+        request = {'action': 'gpio_set_mode',
+                   'pin': pin,
+                   'mode': 'input' if mode == GPIO_MODE_INPUT else 'output'}
+        response = send_request(request)
+        return response['status'] == 'ok'
+
     def gpio_read(self, pin):
-        pass
+        request = {'action': 'gpio_read',
+                   'pin': pin}
+        response = send_request(request)
+        return response['status'] == 'ok'
 
     def gpio_write(self, pin, value):
-        pass
+        request = {'action': 'gpio_write',
+                   'pin': pin}
+        response = send_request(request)
+        return response['status'] == 'ok'
 
     def i2c_read(self, register):
+        # TODO impl.
         pass
 
     def i2c_write(self, register, value):
+        # TODO impl.
         pass
 
     def serial_read(self):
+        # TODO impl.
         pass
 
     def serial_write(self, payload):
+        # TODO impl.
         pass
