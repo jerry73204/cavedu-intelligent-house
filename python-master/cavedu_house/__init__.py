@@ -10,6 +10,28 @@ CHANNEL_TYPE_FILE    = 2
 GPIO_MODE_INPUT = 0
 GPIO_MODE_OUTPUT = 1
 
+class MediaTekCloudService:
+    def __init__(self, device_id, device_key):
+        self.device_id = device_id
+        self.device_key = device_key
+
+    def send_data_point(data_id, data_value):
+        http_client = httplib.HTTPConnection('api.mediatek.com')
+        url = '/mcs/v2/devices/%s/datapoints.csv' % self.device_id
+        headers = {'deviceKey': self.device_key}
+        body = '%s,,%s' % (data_id, data_value)
+        http_client.request('POST', url, body=body, headers=headers)
+
+    def receive_data_point(data_id):
+        http_client = httplib.HTTPConnection('api.mediatek.com')
+        url = '/mcs/v2/devices/%s/datachannels/%s/datapoints' % (self.device_id, data_id)
+        headers = {'deviceKey': self.device_key}
+        http_client.request('GET', url, headers=headers)
+
+        response = http_client.getresponse()
+        result = json.loads(str(response.read(), 'UTF-8'))
+        return result
+
 class HouseDevice:
     def __init__(self, channel_type, **kargs):
         assert channel_type in (CHANNEL_TYPE_NETWORK, CHANNEL_TYPE_SERIAL, CHANNEL_TYPE_FILE)
