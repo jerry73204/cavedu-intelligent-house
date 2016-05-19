@@ -13,10 +13,18 @@ import logging
 
 import serial
 
+DEVICE_TYPE_DUMMY = 0
+DEVICE_TYPE_MT_7688 = 1
+DEVICE_TYPE_MT_7688_DUO = 2
+DEVICE_TYPE_PI_1 = 3
+DEVICE_TYPE_PI_2 = 4
+DEVICE_TYPE_PI_3 = 5
+
 SERVER_SOCKETS = list()
 SERIAL_DEVICES = list()
 OPENED_FILES = list()
 USE_STANDARD_IO = False
+DEVICE_TYPE = None
 
 SELECT_TIMEOUT = 1
 FLAG_SHUTDOWN = False
@@ -26,7 +34,43 @@ def signal_handler(signum, frame):
     FLAG_SHUTDOWN = True
 
 def handle_request(data):
-    return data
+    action = data['action']
+
+    def action_gpio_read():
+        pass
+
+    def action_gpio_write():
+        pass
+
+    def action_i2c_read():
+        pass
+
+    def action_i2c_write():
+        pass
+
+    def action_serial_read():
+        pass
+
+    def action_serial_write():
+        pass
+
+    if action == 'gpio_read':
+        return action_gpio_read()
+
+    elif action == 'gpio_write':
+        return action_gpio_write()
+
+    elif action == 'i2c_read':
+        return action_i2c_read()
+
+    elif action == 'i2c_write':
+        return action_i2c_write()
+
+    elif action == 'serial_read':
+        return action_serial_read()
+
+    elif action == 'serial_write':
+        return action_serial_write()
 
 def client_handler(reader, writer):
     state_read_size = 1
@@ -115,6 +159,35 @@ def client_handler(reader, writer):
                 state = state_read_size
 
 def main():
+    global DEVICE_TYPE
+
+    def init_dummy():
+        logging.info('running on a dummy device')
+
+    def init_MT7688():
+        logging.info('running on a MediaTek 7688 device')
+        import mraa
+
+    def init_MT7688_Duo():
+        logging.info('running on a MediaTek 7688 Duo device')
+        import mraa
+
+    def init_Pi1():
+        logging.info('running on a Raspberry Pi device')
+        import RPi.GPIO as GPIO
+        GPIO.setmode(GPIO.BCM)
+
+
+    def init_Pi2():
+        logging.info('running on a Raspberry Pi 2 device')
+        import RPi.GPIO as GPIO
+        GPIO.setmode(GPIO.BCM)
+
+    def init_Pi3():
+        logging.info('running on a Raspberry Pi 3 device')
+        import RPi.GPIO as GPIO
+        GPIO.setmode(GPIO.BCM)
+
     global USE_STANDARD_IO
 
     # setups
@@ -127,9 +200,9 @@ def main():
     arg_parser.add_argument('--device',
                             required=True,
                             metavar='DEVICE_TYPE',
-                            choices=['MT7688', 'Pi1', 'Pi2', 'Pi3'],
+                            choices=['dummy', 'MT7688', 'MT7688_Duo', 'Pi1', 'Pi2', 'Pi3'],
                             nargs=1,
-                            help='specify the device model. DEVICE_TYPE can be either MT7688, Pi1, Pi2, Pi3')
+                            help='specify the device model. DEVICE_TYPE can be either MT7688, MT7688_Duo, Pi1, Pi2, Pi3')
     arg_parser.add_argument('--serial',
                             metavar=('SERIAL_PATH', 'BAUDRATE'),
                             nargs=2,
@@ -151,6 +224,32 @@ def main():
     args = arg_parser.parse_args()
 
     # parse arguments
+    if args.device[0] == 'dummy':
+        DEVICE_TYPE = DEVICE_TYPE_DUMMY
+        init_dummy()
+
+    elif args.device[0] == 'MT7688':
+        DEVICE_TYPE = DEVICE_TYPE_MT_7688
+        init_MT7688()
+
+    elif args.device[0] == 'MT7688_Duo':
+        DEVICE_TYPE = DEVICE_TYPE_MT_7688_DUO
+        init_MT7688_Duo()
+
+    elif args.device[0] == 'Pi1':
+        DEVICE_TYPE = DEVICE_TYPE_PI_1
+        init_Pi1()
+
+    elif args.device[0] == 'Pi2':
+        DEVICE_TYPE = DEVICE_TYPE_PI_2
+        init_Pi2()
+
+    elif args.device[0] == 'Pi3':
+        DEVICE_TYPE = DEVICE_TYPE_PI_3
+        init_Pi3()
+
+    else:
+        exit(2)
 
     if args.network is not None:
         for arg in args.network:
