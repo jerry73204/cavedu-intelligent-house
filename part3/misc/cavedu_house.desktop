@@ -1,9 +1,0 @@
-[Desktop Entry]
-Encoding=UTF-8
-Type=Application
-Name=CAVEDU House
-Name[en_US]=CAVEDU House
-Name[zh_TW]=CAVEDU智慧屋
-Icon=/home/pi/Pictures/cavedu.png
-Exec=/bin/bash -c '(date; python2 /home/pi/cavedu-intelligent-house/part3/main.py) &>> /home/pi/cavedu_house.log'
-StartupNotify=true

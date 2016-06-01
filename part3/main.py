@@ -34,7 +34,7 @@ LOOP_DELAY = 0.001
 DOOR_OPEN_TIMEOUT = 20
 
 # PID file path
-PID_FILE_PATH = '/tmp/cavedu_house.pid'
+PID_FILE_PATH = '/tmp/thhs_house.pid'
 
 # global variables
 PREV_DOOR_OPEN = False

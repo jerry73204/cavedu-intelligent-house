@@ -110,7 +110,7 @@ class GuiServie:
 
     def worker(self):
         tk_root = tk.Tk()
-        tk_root.title('CAVEDU智慧屋')
+        tk_root.title('東海高中智慧屋')
         tk_root.bind('<Escape>', lambda e: tk_root.quit())
 
         tk_label_status = tk.Label(tk_root, font=('', 12), text='')

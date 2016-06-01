@@ -1,0 +1,9 @@
+[Desktop Entry]
+Encoding=UTF-8
+Type=Application
+Name=THHS House
+Name[en_US]=THHS House
+Name[zh_TW]=THHS智慧屋
+Icon=/home/pi/Pictures/thhs.png
+Exec=/bin/bash -c '(date; python2 /home/pi/thhs-intelligent-house/part3/main.py) &>> /home/pi/thhs_house.log'
+StartupNotify=true
